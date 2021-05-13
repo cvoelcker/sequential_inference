@@ -1,0 +1,1 @@
+from sequential_inference.setup.vector import vector_preface, ch

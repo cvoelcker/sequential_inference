@@ -1,14 +1,10 @@
 import abc
+from sequential_inference.abc.common import AbstractAlgorithm
 from typing import Dict, Optional, OrderedDict, Tuple
 import torch
 
 
-class AbstractSequenceAlgorithm(abc.ABC):
-    def __init__(self):
-        self.device: str = "cpu"
-        self.buffer: Dict[str, OrderedDict] = {}
-        super().__init__()
-
+class AbstractSequenceAlgorithm(AbstractAlgorithm):
     @abc.abstractmethod
     def infer_sequence(
         self,
@@ -26,15 +22,6 @@ class AbstractSequenceAlgorithm(abc.ABC):
         action: Optional[torch.Tensor] = None,
         rewards: Optional[torch.Tensor] = None,
         global_belief: Optional[torch.Tensor] = None,
-    ) -> torch.Tensor:
-        raise NotImplementedError("Cannot instantiate AbstractSequenceModel")
-
-    @abc.abstractmethod
-    def compute_loss(
-        self,
-        obs: torch.Tensor,
-        actions: Optional[torch.Tensor] = None,
-        rewards: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         raise NotImplementedError("Cannot instantiate AbstractSequenceModel")
 
@@ -57,34 +44,6 @@ class AbstractSequenceAlgorithm(abc.ABC):
         self, latent: torch.Tensor, actions: torch.Tensor
     ) -> torch.Tensor:
         raise NotImplementedError("Cannot instantiate AbstractSequenceModel")
-
-    def register_module(self, key: str, module: torch.nn.Module):
-        if key in self.buffer.keys():
-            raise KeyError("Key in module buffer is not unique")
-        else:
-            self.buffer[key] = module
-
-    def to(self, device: str):
-        self.device = device
-        for k, v in self.buffer.items():
-            v.to(self.device)
-
-    def get_checkpoint(self):
-        to_save = {}
-        for k, v in self.buffer.items():
-            to_save[k] = v.state_dict()
-        return to_save
-
-    def load_checkpoint(self, chp: Dict[str, OrderedDict]):
-        for k, v in self.buffer.items():
-            v.load_state_dict(chp[k])
-
-    def get_parameters(self):
-        params = []
-        for k, v in self.buffer.items():
-            # needs to concatenate the list to flatten them
-            params += list(v.parameters())
-        return params
 
 
 class AbstractLatentModel(torch.nn.Module, metaclass=abc.ABCMeta):

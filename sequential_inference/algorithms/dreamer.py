@@ -41,11 +41,11 @@ class DreamerAlgorithm(VIModelAlgorithm):
         )
 
     def get_samples(self, latent):
-        latent1 = []
+        latent = []
 
         for l in latent:
-            latent1.append(l[0])
+            latent.append(l[0])
 
-        latent1 = torch.stack(latent1, 1)
+        latent = torch.stack(latent, 1)
 
-        return latent1[..., : self.latent_dim]
+        return latent[..., : self.latent_dim]
