@@ -1,0 +1,4 @@
+# @package _group_
+
+parameters:
+  hidden_layers: [16,16,16]

@@ -1,0 +1,15 @@
+# @package _group_
+
+name: Dreamer
+
+parameters:
+  feature_dim: 64
+  latent_dim: 32
+  recurrent_hidden_dim: 32
+  belief_dim: 0
+  hidden_units:
+    - 64
+    - 64
+  leaky_slope: 0.2
+  predict_from_prior: False
+  condition_on_posterior: False

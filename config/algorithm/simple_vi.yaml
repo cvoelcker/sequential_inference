@@ -1,0 +1,12 @@
+# @package _group_
+
+name: SimpleVI
+
+parameters:
+  latent_dim: 32
+  hidden_units:
+    - 64
+    - 64
+  leaky_slope: 0.2
+  predict_from_prior: False
+  condition_on_posterior: False

@@ -1,0 +1,6 @@
+# @package _group_
+
+name: Visual
+
+parameters:
+  layers: [32,32,32]

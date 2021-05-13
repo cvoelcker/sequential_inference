@@ -1,0 +1,10 @@
+# @package _group_
+
+name: MLP
+
+encoder:
+  parameters:
+    hidden_layers: [32,32]
+decoder:
+  parameters:
+    hidden_layers: [32,32]
