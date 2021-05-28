@@ -1,12 +1,28 @@
+from sequential_inference.envs.vec_env.vec_torch import TorchBox
 from typing import Optional
 
+import numpy as np
 import torch
 
 from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
-from sequential_inference.abc.rl import AbstractAgent
+from sequential_inference.abc.rl import AbstractAgent, AbstractStatefulAgent
 
 
-class InferencePolicyAgent(AbstractAgent):
+class RandomAgent(AbstractAgent):
+    def __init__(self, action_space: TorchBox):
+        self.action_space = action_space
+
+    def act(
+        self,
+        observation: torch.Tensor,
+        reward: Optional[torch.Tensor] = None,
+        context: Optional[torch.Tensor] = None,
+        explore: bool = False,
+    ) -> torch.Tensor:
+        return self.action_space.sample()
+
+
+class InferencePolicyAgent(AbstractStatefulAgent):
     """Wraps a policy and an inference model to provide a stateful representation
     of the current latent state. Used with autoregressive and recurrent algorithms
 
@@ -30,16 +46,15 @@ class InferencePolicyAgent(AbstractAgent):
     def act(
         self,
         observation: torch.Tensor,
-        reward: Optional[torch.Tensor],
+        reward: Optional[torch.Tensor] = None,
         context: Optional[torch.Tensor] = None,
         explore: bool = False,
-    ):
+    ) -> torch.Tensor:
         self.state = self.model.infer_single_step(
             self.state, observation, self.last_action, reward
         )
         action = self.policy.act(observation, reward, self.state, explore)
         self.last_action = action
-
         return action
 
 
@@ -52,9 +67,9 @@ class PolicyNetworkAgent(AbstractAgent):
     def act(
         self,
         observation: torch.Tensor,
-        reward: Optional[torch.Tensor],
-        context: Optional[torch.Tensor],
-        explore: bool,
+        reward: Optional[torch.Tensor] = None,
+        context: Optional[torch.Tensor] = None,
+        explore: bool = False,
     ) -> torch.Tensor:
         if self.latent and not self.observation:
             inp = [context]
@@ -62,6 +77,8 @@ class PolicyNetworkAgent(AbstractAgent):
             inp = [observation]
         elif self.latent and self.observation:
             inp = [observation, context]
+        action_dist = self.policy(*inp)
         if explore:
-            return self.policy.sample_action(*inp)[0]
-        return self.policy.get_deterministic_action(*inp)
+            action = action_dist.rsample()[0]
+        action = action_dist.mean
+        return action

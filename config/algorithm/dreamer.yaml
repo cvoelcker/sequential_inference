@@ -4,12 +4,15 @@ name: Dreamer
 
 parameters:
   feature_dim: 64
-  latent_dim: 32
-  recurrent_hidden_dim: 32
+  latent_dim: 64
+  recurrent_hidden_dim: 64
   belief_dim: 0
   hidden_units:
-    - 64
-    - 64
-  leaky_slope: 0.2
+    - 128
+    - 128
+  leaky_slope: 0.1
   predict_from_prior: False
   condition_on_posterior: False
+  kl_factor: 1.
+  state_factor: 1.
+  reward_factor: 1.

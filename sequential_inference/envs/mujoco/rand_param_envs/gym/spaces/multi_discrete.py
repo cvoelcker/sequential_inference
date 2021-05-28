@@ -34,7 +34,7 @@ class MultiDiscrete(gym.Space):
         self.num_discrete_space = self.low.shape[0]
 
     def sample(self):
-        """ Returns a array with one sample from each discrete action space """
+        """Returns a array with one sample from each discrete action space"""
         # For each row: round(random .* (max - min) + min, 0)
         random_array = prng.np_random.rand(self.num_discrete_space)
         return [

@@ -1,7 +1,7 @@
-from sequential_inference.envs.meta_wrappers.common import (
-    VisualTaskWrapper,
-    TimeLimitWrapper,
-)
+from sequential_inference.envs.vec_env.vec_wrapper import VecTimeLimitWrapper
+from sequential_inference.envs.vec_env.vec_torch import VecTorch
+from sequential_inference.envs.meta_wrappers.single_task import SingleTaskEnv
+from sequential_inference.envs.vec_env.vec_env import VecEnv
 from sequential_inference.envs.meta_wrappers.meta_world_wrappers import ML1Env
 from sequential_inference.envs.meta_wrappers.mujoco_meta_tasks import MujocoMetaTask
 from sequential_inference.envs.vec_env import SubprocVecEnv, DummyVecEnv
@@ -9,55 +9,54 @@ from sequential_inference.envs.meta_wrappers.wipe_meta import WipeMeta
 from sequential_inference.envs.vec_env.vec_normalize import VecNormalize
 
 
-def make_env(is_eval_env, env_cfg, single_task=False):
-    if env_cfg.benchmark == "ml1":
-        env = ML1Env(task_name=env_cfg.task, is_eval_env=is_eval_env)
-        env = TimeLimitWrapper(env, duration=env_cfg.horizon)
-    elif env_cfg.benchmark == "mujoco":
-        env = MujocoMetaTask(
-            env_cfg.task,
-            is_eval_env=is_eval_env,
-            reward_scaling=env_cfg.reward_scaling,
-            single_task=single_task,
-            distance=env_cfg.distance,
-        )
-    elif env_cfg.benchmark == "wipe":
-        env = WipeMeta(
-            task_code=env_cfg.task,
-            num_paths=env_cfg.num_paths,
-            num_markers=env_cfg.num_markers,
-            is_eval_task=False,
-        )
-        env = TimeLimitWrapper(env, duration=env_cfg.horizon)
+def make_multi_env(env: str, suite: str) -> VecEnv:
+    if suite == "ml1":
+        env = ML1Env(task_name=env)
+    elif suite == "mujoco":
+        env = MujocoMetaTask(env)
+    elif suite == "wipe":
+        env = WipeMeta(env)
     else:
-        raise NotImplementedError("benchmark {}".format(env_cfg.benchmark))
-    if env_cfg.visual_obs:
-        env = VisualTaskWrapper(env, resolution=env_cfg.resolution)
+        raise NotImplementedError("benchmark {}".format(suite))
     return env
 
 
 def make_vec_env(
-    n_envs,
-    is_eval_env,
-    env_cfg,
-    normalize=False,
-    normalize_rew=None,
-    ret_rms=None,
-    single_task=False,
-):
-    print("Running subproc vec env")
-    if n_envs > 1:
-        venvs = SubprocVecEnv(
-            [
-                lambda: make_env(is_eval_env, env_cfg, single_task=single_task)
-                for _ in range(n_envs)
-            ]
-        )
-        print(venvs)
+    n_envs: int,
+    env_name: str,
+    time_limit: int = -1,
+    is_multi_env: bool = False,
+    normalize_rew: bool = False,
+    ret_rms: bool = False,
+    suite: str = None,
+) -> VecEnv:
+    if is_multi_env:
+        assert suite is not None, "Can only create multi env from known suite"
+        env_func = lambda: make_multi_env(env_name, suite)
     else:
-        venvs = DummyVecEnv(
-            [lambda: make_env(is_eval_env, env_cfg, single_task=single_task)]
-        )
-    if normalize:
+        env_func = lambda: SingleTaskEnv(env_name)
+
+    if n_envs > 1:
+        venvs = SubprocVecEnv([env_func for _ in range(n_envs)])
+    else:
+        venvs = DummyVecEnv([env_func])
+    if normalize_rew:
         venvs = VecNormalize(venvs, normalise_rew=normalize_rew, ret_rms=ret_rms)
-    return venvs
+
+    if time_limit >= 1:
+        venvs = VecTimeLimitWrapper(venvs, duration=time_limit)
+    return VecTorch(venvs)
+
+
+def setup_envs(cfg):
+    env_name = cfg.env.env_name
+    n_envs = cfg.env.n_envs
+    time_limit = cfg.env.time_limit
+    is_multi_env = cfg.env.is_multi_env
+    normalize_rew = cfg.algorithm.normalize_rew
+    ret_rms = cfg.algorithm.ret_rms
+    suite = cfg.env.suite
+
+    return make_vec_env(
+        n_envs, env_name, time_limit, is_multi_env, normalize_rew, ret_rms, suite
+    )

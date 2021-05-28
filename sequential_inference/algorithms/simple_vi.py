@@ -1,3 +1,4 @@
+from sequential_inference.util.rl_util import join_state_with_array
 from typing import Optional
 import torch
 from sequential_inference.models.base.network_util import calc_kl_divergence
@@ -15,6 +16,9 @@ class VIModelAlgorithm(AbstractSequenceAlgorithm):
         decoder: torch.nn.Module,
         reward_decoder: torch.nn.Module,
         latent: AbstractLatentModel,
+        kl_factor: float,
+        state_factor: float,
+        reward_factor: float,
         predict_from_prior: bool = False,
         condition_on_posterior: bool = False,
     ):
@@ -27,21 +31,25 @@ class VIModelAlgorithm(AbstractSequenceAlgorithm):
         self.predict_from_prior = predict_from_prior
         self.condition_on_posterior = condition_on_posterior
 
+        self.kl_factor = kl_factor
+        self.state_factor = state_factor
+        self.reward_factor = reward_factor
+
         self.register_module("encoder", self.encoder)
         self.register_module("decoder", self.decoder)
         self.register_module("reward_decoder", self.reward_decoder)
         self.register_module("latent", self.latent)
 
-    def infer_sequence(self, obs, actions=None, rewards=None, global_belief=None):
+    def infer_sequence(self, obs, actions=None, rewards=None):
         priors, posteriors = self.infer_full_sequence(
-            obs, actions=actions, rewards=rewards, global_belief=global_belief
+            obs, actions=actions, rewards=rewards
         )
         priors = self.get_samples(priors)
         posteriors = self.get_samples(posteriors)
         return priors, posteriors
 
-    def infer_full_sequence(self, obs, actions=None, rewards=None, global_belief=None):
-        features_seq = self.encoder(obs, rewards)
+    def infer_full_sequence(self, obs, actions=None, rewards=None):
+        features_seq = self.encoder(join_state_with_array(obs, rewards))
         horizon = obs.shape[1]
         priors = []
         posteriors = []
@@ -50,7 +58,7 @@ class VIModelAlgorithm(AbstractSequenceAlgorithm):
         prior_latent = prior[0]
         posterior_latent = posterior[0]
         priors.append(prior)
-        posteriors.append(posteriors)
+        posteriors.append(posterior)
 
         for t in range(1, horizon):
             prior, posterior = self.latent(
@@ -58,27 +66,28 @@ class VIModelAlgorithm(AbstractSequenceAlgorithm):
                 posterior_latent,
                 features_seq[:, t],
                 action=actions[:, t - 1],
-                global_belief=global_belief[:, t],
             )
             prior_latent = prior[0]
             posterior_latent = posterior[0]
             if self.condition_on_posterior:
                 prior_latent = posterior_latent
             priors.append(prior)
-            posteriors.append(posteriors)
+            posteriors.append(posterior)
         return priors, posteriors
 
     def compute_loss(
         self,
         obs: torch.Tensor,
-        actions: Optional[torch.Tensor] = None,
-        rewards: Optional[torch.Tensor] = None,
-        global_beliefs: Optional[torch.Tensor] = None,
+        actions: torch.Tensor,
+        rewards: torch.Tensor,
+        dones: torch.Tensor,
     ):
+
+        dones = 1. - dones
         stats = {}
 
         priors, posteriors = self.infer_full_sequence(
-            obs, actions=actions, rewards=rewards, global_beliefs=global_beliefs
+            obs, actions=actions, rewards=rewards
         )
         prior_dists = self.get_dists(priors)
         posterior_dists = self.get_dists(posteriors)
@@ -89,61 +98,60 @@ class VIModelAlgorithm(AbstractSequenceAlgorithm):
 
         # KL divergence loss.
         kld_loss = calc_kl_divergence(prior_dists, posterior_dists)
-        loss -= kld_loss
+        kld_loss = (kld_loss * dones).sum(-1).mean()
+        loss += self.kl_factor * kld_loss
         stats["kld_loss"] = kld_loss.detach().cpu()
 
         # Log likelihood loss of generated observations.
         images_seq = self.decoder(posterior_latents)
-        log_likelihood_loss = torch.mean((images_seq - obs) ** 2)
-        loss += log_likelihood_loss
+        log_likelihood_loss = (((images_seq - obs) ** 2) * dones).sum(-1).mean()
+        loss += self.state_factor * log_likelihood_loss
         stats["log_lik_loss"] = log_likelihood_loss.detach().cpu()
 
         if self.predict_from_prior:
             # Log likelihood loss of generated observations from prior (if more supervision is needed).
             prior_images_seq = self.decoder(prior_latents)
-            log_likelihood_prior_loss = torch.mean((prior_images_seq - obs) ** 2)
-            loss += log_likelihood_prior_loss
+            log_likelihood_prior_loss = (
+                (((prior_images_seq - obs) ** 2) * dones).sum(-1).mean()
+            )
+            loss += self.state_factor * log_likelihood_prior_loss
             stats["log_lik_prior_loss"] = log_likelihood_prior_loss.detach().cpu()
 
         if rewards is not None:
-            # Log likelihood loss of generated rewards. do not reconstruct first reward, since it is a dummy reward
-            rewards_seq = self.reward_decoder(posterior_latents)[:, 1:]
-            reward_log_likelihood_loss = torch.mean(
-                (rewards_seq - rewards.unsqueeze(-1)) ** 2
-            ).mean()
-            loss += reward_log_likelihood_loss
+            # Log likelihood loss of generated rewards.
+            rewards_seq = self.reward_decoder(posterior_latents)
+            reward_log_likelihood_loss = (
+                (((rewards_seq - rewards) ** 2) * dones).sum(-1).mean()
+            )
+            loss += self.state_factor * reward_log_likelihood_loss
             stats["log_lik_rew"] = reward_log_likelihood_loss.detach().cpu()
 
         if rewards is not None and self.predict_from_prior:
-            # Log likelihood loss of generated rewards. do not reconstruct first reward, since it is a dummy reward
-            prior_rewards_seq = self.reward_decoder(prior_latents)[:, 1:]
-            prior_reward_log_likelihood_loss = torch.mean(
-                (prior_rewards_seq - rewards.unsqueeze(-1)) ** 2
-            ).mean()
-            loss += prior_reward_log_likelihood_loss
+            # Log likelihood loss of generated rewards.
+            prior_rewards_seq = self.reward_decoder(prior_latents)
+            prior_reward_log_likelihood_loss = (
+                (((prior_rewards_seq - rewards) ** 2) * dones).sum(-1).mean()
+            )
+            loss += self.state_factor * prior_reward_log_likelihood_loss
             stats["log_lik_prior_rew"] = prior_reward_log_likelihood_loss.detach().cpu()
 
-        return -loss, stats
+        stats["elbo"] = loss.detach().cpu()
 
-    def infer_single_step(
-        self, last_latent, obs, action=None, rewards=None, global_belief=None
-    ):
-        features = self.encoder(obs, rewards)
+        return loss, stats
+
+    def infer_single_step(self, last_latent, obs, action=None, rewards=None):
+        features = self.encoder(join_state_with_array(obs, rewards))
         last_latent = last_latent
         _, posterior = self.latent(last_latent, last_latent, features, action=action)
-        return self.get_samples(posterior), global_belief
+        return self.get_samples(posterior)
 
-    def predict_sequence(
-        self, initial_latent, actions=None, reward=None, global_belief=None
-    ):
+    def predict_sequence(self, initial_latent, actions=None, reward=None):
         prior_latent = initial_latent
         horizon = actions.shape[1]
 
         priors = []
         for t in range(1, horizon):
-            prior = self.latent.infer_prior(
-                prior_latent, actions[:, t], global_belief=global_belief
-            )
+            prior = self.latent.infer_prior(prior_latent, actions[:, t])
             prior_latent = prior[0]
             priors.append(prior)
         return self.get_samples(priors)

@@ -12,9 +12,7 @@ from torch.distributions import Normal
 
 from sequential_inference.models.vae.image_vae import BroadcastVAE
 from sequential_inference.models.dynamics.structured_dynamics import Dynamics
-from sequential_inference.models.sequence.sequence_model import (
-    AbstractSequenceAlgorithm,
-)
+from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
 
 
 class SequenceVAE(AbstractSequenceAlgorithm):

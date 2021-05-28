@@ -106,7 +106,7 @@ class SawyerReachingEnv(mujoco_env.MujocoEnv):
         return len(self.get_obs())
 
     def get_obs(self):
-        """ state observation is joint angles + joint velocities + ee pose """
+        """state observation is joint angles + joint velocities + ee pose"""
         angles = self._get_joint_angles()
         velocities = self._get_joint_velocities()
         ee_pose = self._get_ee_pose()
@@ -119,7 +119,7 @@ class SawyerReachingEnv(mujoco_env.MujocoEnv):
         return self.data.qvel.copy()
 
     def _get_ee_pose(self):
-        """ ee pose is xyz position + orientation quaternion """
+        """ee pose is xyz position + orientation quaternion"""
         return self.data.site_xpos[self.site_id_ee].copy()
 
     def reset_model(self):
@@ -168,7 +168,7 @@ class SawyerReachingEnv(mujoco_env.MujocoEnv):
         self.do_simulation(feasible_desired_position, self.frame_skip)
 
     def step(self, action):
-        """ apply the 7DoF action provided by the policy """
+        """apply the 7DoF action provided by the policy"""
         self.do_step(action)
         obs = self.get_obs()
         reward, score, sparse_reward = self.compute_reward(get_score=True)
@@ -257,7 +257,7 @@ class SawyerReachingEnv(mujoco_env.MujocoEnv):
 
     def goal_visibility(self, visible):
 
-        """ Toggle the goal visibility when rendering: video should see goal, but image obs shouldn't """
+        """Toggle the goal visibility when rendering: video should see goal, but image obs shouldn't"""
 
         if visible:
             self.model.site_rgba[self.site_id_goal] = np.array([1, 0, 0, 1])
@@ -347,7 +347,7 @@ class SawyerReachingEnvGoal(SawyerReachingEnv):
         return self.model.site_pos[self.site_id_goal]
 
     def step(self, action):
-        """ apply the 7DoF action provided by the policy """
+        """apply the 7DoF action provided by the policy"""
         obs, reward, done, info = super().step(action)
         info["task"] = self.get_task()
         return obs, reward, done, info
@@ -425,7 +425,7 @@ class SawyerReachingEnvGoalOOD(SawyerReachingEnv):
         return self.model.site_pos[self.site_id_goal]
 
     def step(self, action):
-        """ apply the 7DoF action provided by the policy """
+        """apply the 7DoF action provided by the policy"""
         obs, reward, done, info = super().step(action)
         info["task"] = self.get_task()
         return obs, reward, done, info
@@ -493,7 +493,7 @@ class SawyerReachingEnvGoalComplexTwoModes(SawyerReachingEnv):
         return (self.model.site_pos[self.site_id_goal], self.action_perturb)
 
     def step(self, action):
-        """ apply the 7DoF action provided by the policy """
+        """apply the 7DoF action provided by the policy"""
         obs, reward, done, info = super().step(action + self.action_perturb)
         info["task"] = self.get_task()
         return obs, reward, done, info

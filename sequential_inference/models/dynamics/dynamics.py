@@ -245,25 +245,25 @@ class SLACLatentNetwork(AbstractLatentModel):
 
         # p(r(t) | z1(t), z2(t), a(t), z1(t+1), z2(t+1))
         self.reward_predictor = Gaussian(
-            2 * latent1_dim + 2 * latent2_dim + action_shape,
+            latent1_dim + latent2_dim + action_shape,
             1,
             hidden_units,
             leaky_slope=leaky_slope,
         )
 
     def infer_prior(self, last_latent, action=None, global_belief=None):
-        latent1_dist = self.latent1_prior([last_latent, action])
+        latent1_dist = self.latent1_prior(torch.cat([last_latent, action], -1))
         latent1_sample = latent1_dist.rsample()
         # p(z2(t) | z1(t), z2(t-1), a(t-1))
-        latent2_dist = self.latent2_prior([latent1_sample, last_latent, action])
+        latent2_dist = self.latent2_prior(torch.cat([latent1_sample, last_latent, action], -1))
         latent2_sample = latent2_dist.rsample()
         return (latent1_sample, latent2_sample, latent1_dist, latent2_dist)
 
     def infer_posterior(self, last_latent, state, action=None, global_belief=None):
-        latent1_dist = self.latent1_posterior([state, last_latent, action])
+        latent1_dist = self.latent1_posterior(torch.cat([state, last_latent, action], -1))
         latent1_sample = latent1_dist.rsample()
         # q(z2(t) | z1(t), z2(t-1), a(t-1))
-        latent2_dist = self.latent2_posterior([latent1_sample, last_latent, action])
+        latent2_dist = self.latent2_posterior(torch.cat([latent1_sample, last_latent, action], -1))
         latent2_sample = latent2_dist.rsample()
         return (latent1_sample, latent2_sample, latent1_dist, latent2_dist)
 
@@ -323,12 +323,11 @@ class PlaNetLatentNetwork(AbstractLatentModel):
     def deter_encode(self, last_latent, action, global_belief=None):
         rnn_state = last_latent[..., self.latent_dim :]
         prev_state = last_latent[..., : self.latent_dim]
-
         if global_belief is not None:
             x = torch.cat([prev_state, global_belief, action], dim=-1)
         else:
             x = torch.cat([prev_state, action], dim=-1)
-        x = self.img_before_cell(x)
+        x = self.before_cell(x)
         deter = self.dynamics_cell(
             x, rnn_state
         )  # b_tau, s_{t-1}, a_{t-1}, h^s_{t-1} --> h^s_t
@@ -342,7 +341,7 @@ class PlaNetLatentNetwork(AbstractLatentModel):
     def infer_posterior(self, last_latent, state, action=None, global_belief=None):
         rnn_state = self.deter_encode(last_latent, action, global_belief=global_belief)
         enc = torch.cat((rnn_state, state), -1)
-        latent_dist = self.prior(enc)
+        latent_dist = self.posterior(enc)
         return (torch.cat((latent_dist.rsample(), rnn_state), -1), latent_dist)
 
     def obtain_initial(self, state, global_belief=None):
@@ -352,8 +351,7 @@ class PlaNetLatentNetwork(AbstractLatentModel):
         rnn_state = last_rnn.rsample()
         prior_sample = prior_dist.rsample()
         prior_sample = torch.cat(((prior_sample, rnn_state)), -1)
-
-        posterior_enc = torch.cat((rnn_state, state))
+        posterior_enc = torch.cat((rnn_state, state), -1)
         posterior_dist = self.posterior(posterior_enc)
 
         posterior_sample = torch.cat((posterior_dist.rsample(), rnn_state), -1)

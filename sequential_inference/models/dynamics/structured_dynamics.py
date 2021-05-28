@@ -110,7 +110,6 @@ class Dynamics(nn.Module):
         self.register_buffer("diag_mask", diag_mask)
 
         if self.c.debug_xavier:
-            print("Using xavier init for interaction.")
             self.weight_init()
 
         self.nonlinear = F.elu if self.c.debug_nonlinear == "elu" else F.relu

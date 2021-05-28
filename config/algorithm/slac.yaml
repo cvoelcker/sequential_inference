@@ -4,6 +4,7 @@ name: SLAC
 
 parameters:
   feature_dim: 64
+  latent_dim: 64
   latent1_dim: 32
   latent2_dim: 32
   hidden_units:
@@ -12,4 +13,6 @@ parameters:
   leaky_slope: 0.2
   predict_from_prior: False
   condition_on_posterior: False
-
+  kl_factor: 1.
+  state_factor: 1.
+  reward_factor: 1.

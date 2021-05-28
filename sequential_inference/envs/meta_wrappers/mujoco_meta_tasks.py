@@ -1,5 +1,6 @@
 import gym
-import d4rl
+
+# import d4rl
 import numpy as np
 
 from gym.envs.registration import load

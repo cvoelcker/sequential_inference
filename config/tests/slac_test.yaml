@@ -1,0 +1,6 @@
+defaults:
+  - algorithm: slac
+  - encoder_decoder: mlp
+  - reward_decoder: mlp
+
+add_global_belief: False

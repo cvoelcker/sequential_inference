@@ -6,6 +6,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from sequential_inference.abc.experiment import AbstractExperiment
+from sequential_inference.abc.util import Logger
 
 
 def mean_dict(lod):

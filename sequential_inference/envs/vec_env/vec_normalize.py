@@ -2,6 +2,7 @@
 Taken from https://github.com/ope5nai/baselines
 """
 import numpy as np
+import torch
 
 from sequential_inference.envs.vec_env.vec_env import VecEnvWrapper
 

@@ -1,3 +1,4 @@
+from typing import List
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -43,16 +44,16 @@ def differentiable_sampling(mean, sigma, prior_sigma, samples=1):
     return z, torch.sum(kl_z, -1)
 
 
-def calc_kl_divergence(p_list, q_list):
+def calc_kl_divergence(
+    p_list: List[torch.distributions.distribution.Distribution],
+    q_list: List[torch.distributions.distribution.Distribution],
+) -> torch.Tensor:
     assert len(p_list) == len(q_list)
-
-    kld = 0.0
+    kld = []
     for i in range(len(p_list)):
         # (N, L) shaped array of kl divergences.
-        _kld = kl_divergence(p_list[i], q_list[i])
-        # Average along batches, sum along sequences and elements.
-        kld += _kld.mean(dim=0).sum()
-
+        kld.append(kl_divergence(p_list[i], q_list[i]))
+    kld = torch.stack(kld, 1)
     return kld
 
 

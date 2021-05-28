@@ -98,7 +98,7 @@ _EPS4 = _FLOAT_EPS * 4.0
 
 
 def euler2mat(euler):
-    """ Convert Euler Angles to Rotation Matrix.  See rotation.py for notes """
+    """Convert Euler Angles to Rotation Matrix.  See rotation.py for notes"""
     euler = np.asarray(euler, dtype=np.float64)
     assert euler.shape[-1] == 3, "Invalid shaped euler {}".format(euler)
 
@@ -122,7 +122,7 @@ def euler2mat(euler):
 
 
 def euler2quat(euler):
-    """ Convert Euler Angles to Quaternions.  See rotation.py for notes """
+    """Convert Euler Angles to Quaternions.  See rotation.py for notes"""
     euler = np.asarray(euler, dtype=np.float64)
     assert euler.shape[-1] == 3, "Invalid shape euler {}".format(euler)
 
@@ -141,7 +141,7 @@ def euler2quat(euler):
 
 
 def mat2euler(mat):
-    """ Convert Rotation Matrix to Euler Angles.  See rotation.py for notes """
+    """Convert Rotation Matrix to Euler Angles.  See rotation.py for notes"""
     mat = np.asarray(mat, dtype=np.float64)
     assert mat.shape[-2:] == (3, 3), "Invalid shape matrix {}".format(mat)
 
@@ -163,7 +163,7 @@ def mat2euler(mat):
 
 
 def mat2quat(mat):
-    """ Convert Rotation Matrix to Quaternion.  See rotation.py for notes """
+    """Convert Rotation Matrix to Quaternion.  See rotation.py for notes"""
     mat = np.asarray(mat, dtype=np.float64)
     assert mat.shape[-2:] == (3, 3), "Invalid shape matrix {}".format(mat)
 
@@ -200,7 +200,7 @@ def mat2quat(mat):
 
 
 def quat2euler(quat):
-    """ Convert Quaternion to Euler Angles.  See rotation.py for notes """
+    """Convert Quaternion to Euler Angles.  See rotation.py for notes"""
     return mat2euler(quat2mat(quat))
 
 
@@ -214,7 +214,7 @@ def subtract_euler(e1, e2):
 
 
 def quat2mat(quat):
-    """ Convert Quaternion to Euler Angles.  See rotation.py for notes """
+    """Convert Quaternion to Euler Angles.  See rotation.py for notes"""
     quat = np.asarray(quat, dtype=np.float64)
     assert quat.shape[-1] == 4, "Invalid shape quat {}".format(quat)
 
@@ -354,7 +354,7 @@ def normalize_angles(angles):
 
 
 def round_to_straight_angles(angles):
-    """Returns closest angle modulo 90 degrees """
+    """Returns closest angle modulo 90 degrees"""
     angles = np.round(angles / (np.pi / 2)) * (np.pi / 2)
     return normalize_angles(angles)
 

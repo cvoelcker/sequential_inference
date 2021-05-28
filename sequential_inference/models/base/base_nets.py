@@ -6,6 +6,7 @@ Adapted from every repo ever ;)
 @author Claas
 """
 
+from sequential_inference.models.base.dists import TanhNormal
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -61,7 +62,10 @@ def create_mlp(input_size, output_size, layer_sizes):
 class MLP(nn.Module):
     def __init__(self, input_size, output_size, hidden_layers=1):
         super().__init__()
-
+        if type(input_size) == torch.Size:
+            input_size = input_size[-1]
+        if type(output_size) == torch.Size:
+            output_size = output_size[-1]
         self.net = create_mlp(input_size, output_size, hidden_layers)
 
     def forward(self, x):
@@ -80,6 +84,10 @@ class EncoderNet(nn.Module):
 
         self.latent_dim = output_size
         self.img_shape = img_shape
+        if type(input_size) == torch.Size:
+            input_size = input_size[0]
+        if type(output_size) == torch.Size:
+            output_size = output_size[0]
 
         self.network = create_conv_layers(
             input_size + 2,
@@ -135,6 +143,8 @@ class BroadcastDecoderNet(nn.Module):
         self.latent_dim = latent_dim
         self.img_shape = img_shape
 
+        if type(output_shape) == torch.Size:
+            output_shape = output_shape[0]
         # construct the core conv structure
         self.network = create_conv_layers(
             self.latent_dim + 2,
@@ -240,6 +250,38 @@ class Gaussian(nn.Module):
         return dists.Normal(loc=mean, scale=std)
 
 
+class TanhGaussian(Gaussian):
+    def __init__(
+        self,
+        input_dim,
+        output_dim,
+        hidden_units=[256, 256],
+        std=None,
+        leaky_slope=0.2,
+        multiplier=1.0,
+    ):
+        super(Gaussian, self).__init__()
+        self.net = create_mlp(
+            input_dim,
+            2 * output_dim if std is None else output_dim,
+            hidden_units,
+        )
+
+        self.std = std
+        self.multiplier = multiplier
+
+    def forward(self, x):
+        x = self.net(x)
+        if self.std:
+            mean = x
+            std = torch.ones_like(mean) * self.std
+        else:
+            mean, std = torch.chunk(x, 2, dim=-1)
+            std = F.softplus(std) + 1e-5
+
+        return TanhNormal(loc=mean, scale=std, multiplier=self.multiplier)
+
+
 class OffsetGaussian(nn.Module):
     def __init__(
         self, input_dim, output_dim, hidden_units=[256, 256], std=None, leaky_slope=0.2
@@ -283,6 +325,11 @@ class SLACDecoder(nn.Module):
         super().__init__()
         self.std = std
 
+        if type(input_dim) == torch.Size:
+            input_dim = input_dim[0]
+        if type(output_dim) == torch.Size:
+            output_dim = output_dim[0]
+
         self.net = nn.Sequential(
             # (32+256, 1, 1) -> (256, 4, 4)
             nn.ConvTranspose2d(input_dim, 256, 4),
@@ -317,6 +364,11 @@ class SLACEncoder(nn.Module):
     def __init__(self, input_dim=3, output_dim=256, leaky_slope=0.2):
         super(self).__init__()
 
+        if type(input_dim) == torch.Size:
+            input_dim = input_dim[0]
+        if type(output_dim) == torch.Size:
+            output_dim = output_dim[0]
+
         self.net = nn.Sequential(
             # (3, 64, 64) -> (32, 32, 32)
             nn.Conv2d(input_dim, 32, 5, 2, 2),
@@ -342,3 +394,14 @@ class SLACEncoder(nn.Module):
         x = x.view(num_batches, num_sequences, -1)
 
         return x
+
+
+class TwinnedMLP(nn.Module):
+    def __init__(self, input_dim, output_dim, layer_sizes):
+        super().__init__()
+
+        self.net1 = create_mlp(input_dim, output_dim, layer_sizes)
+        self.net2 = create_mlp(input_dim, output_dim, layer_sizes)
+
+    def forward(self, x):
+        return self.net1(x), self.net2(x)

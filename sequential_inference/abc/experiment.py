@@ -1,21 +1,33 @@
 import abc
+from sequential_inference.abc.rl import AbstractRLAlgorithm
 from typing import Dict
-from sequential_inference.trainers.trainer import AbstractTrainer, RLTrainer
+
+import torch
+
 from sequential_inference.abc.common import Checkpointable
 
 
 class AbstractExperiment(Checkpointable, metaclass=abc.ABCMeta):
+    """Interface for an experiment class. An experiment provides the
+    train method and various methods to handle hooks and observers
+    """
+
     def __init__(self):
+        super().__init__()
         self.observers = []
         self.epoch_hooks = []
-        self.trainers: Dict[str, AbstractTrainer] = {}
 
     @abc.abstractmethod
     def train(self, start_epoch=0):
         pass
 
-    def after_epoch(self):
-        epoch_log = {}
+    def before_experiment(self):
+        pass
+
+    def after_experiment(self):
+        self.close_observers()
+
+    def after_epoch(self, epoch_log: Dict[str, torch.Tensor]):
         for hook in self.epoch_hooks:
             log = hook(self)
             epoch_log.update(log)
@@ -37,8 +49,20 @@ class AbstractExperiment(Checkpointable, metaclass=abc.ABCMeta):
 
 
 class AbstractRLExperiment(AbstractExperiment, metaclass=abc.ABCMeta):
+    """Defines the minimum scaffolding for an RL experiment"""
 
-    rl_trainer: RLTrainer
+    rl_algorithm: AbstractRLAlgorithm
 
-    def get_policy(self):
-        return self.rl_trainer.get_policy()
+    def get_agent(self):
+        return self.rl_algorithm.get_policy()
+
+
+class ExperimentMixin(abc.ABC):
+    """This ABC mostly exists for the type hierarchy, the mixins
+    can be fully flexible
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    pass

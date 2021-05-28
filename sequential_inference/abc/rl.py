@@ -1,11 +1,10 @@
-from _typeshed import NoneType
 import abc
-from sequential_inference.envs.mujoco.rand_param_envs.gym.core import ActionWrapper
-from sequential_inference.abc.common import AbstractAlgorithm
-from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
 from typing import Optional
 
+import numpy as np
 import torch
+
+from sequential_inference.abc.common import AbstractAlgorithm
 
 
 class AbstractAgent(abc.ABC):
@@ -45,18 +44,25 @@ class AbstractExplorationAgent(AbstractAgent, metaclass=abc.ABCMeta):
     def exploration_policy(
         self,
         observation: torch.Tensor,
-        action: torch.Tensor,
+        action: np.ndarray,
         reward: torch.Tensor,
         context: torch.Tensor,
-    ) -> torch.Tensor:
+    ) -> np.ndarray:
         pass
 
     def act(
         self,
         observation: torch.Tensor,
-        reward: Optional[torch.Tensor],
-        context: Optional[torch.Tensor],
-        explore: bool,
-    ) -> torch.Tensor:
+        reward: Optional[torch.Tensor] = None,
+        context: Optional[torch.Tensor] = None,
+        explore: bool = False,
+    ) -> np.ndarray:
         proposed_action = self.agent.act(observation, reward, context, explore)
         return self.exploration_policy(observation, proposed_action, reward, context)
+
+
+class AbstractStatefulAgent(AbstractAgent, metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def reset(self):
+        """Resets the internal agent on environment reset"""
+        pass

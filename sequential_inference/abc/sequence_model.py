@@ -21,7 +21,6 @@ class AbstractSequenceAlgorithm(AbstractAlgorithm):
         obs: torch.Tensor,
         action: Optional[torch.Tensor] = None,
         rewards: Optional[torch.Tensor] = None,
-        global_belief: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         raise NotImplementedError("Cannot instantiate AbstractSequenceModel")
 
@@ -31,7 +30,6 @@ class AbstractSequenceAlgorithm(AbstractAlgorithm):
         initial_latent: torch.Tensor,
         actions: Optional[torch.Tensor] = None,
         reward: Optional[torch.Tensor] = None,
-        global_belief: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         raise NotImplementedError("Cannot instantiate AbstractSequenceModel")
 
@@ -40,9 +38,7 @@ class AbstractSequenceAlgorithm(AbstractAlgorithm):
         raise NotImplementedError("Cannot instantiate AbstractSequenceModel")
 
     @abc.abstractmethod
-    def reconstruct_reward(
-        self, latent: torch.Tensor, actions: torch.Tensor
-    ) -> torch.Tensor:
+    def reconstruct_reward(self, latent: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError("Cannot instantiate AbstractSequenceModel")
 
 
@@ -80,13 +76,13 @@ class AbstractLatentModel(torch.nn.Module, metaclass=abc.ABCMeta):
         last_latent_prior: Optional[torch.Tensor],
         last_latent_posterior: Optional[torch.Tensor],
         state: torch.Tensor,
-        action: Optional[torch.Tensor] = None,
+        action: torch.Tensor,
         global_belief: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         if last_latent_prior is None:
             return self.obtain_initial(state, global_belief=global_belief)
         prior = self.infer_prior(
-            last_latent_prior, action=action, global_belief=global_belief
+            last_latent_posterior, action=action, global_belief=global_belief
         )
         posterior = self.infer_posterior(
             last_latent_posterior, state, action=action, global_belief=global_belief

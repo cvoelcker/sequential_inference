@@ -1,7 +1,7 @@
 import numpy as np
 from gym.spaces.box import Box
 
-from .robosuite_envs.wipe import WipeLocated
+from sequential_inference.envs.robosuite_envs.wipe import WipeLocated
 
 
 class WipeMeta:

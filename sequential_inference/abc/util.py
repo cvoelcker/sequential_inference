@@ -9,3 +9,9 @@ class Logger(abc.ABC):
     @abc.abstractmethod
     def close(self):
         pass
+
+
+class AbstractDataSampler(abc.ABC):
+    @abc.abstractmethod
+    def get_next(self, batch_size: int):
+        pass

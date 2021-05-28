@@ -1,3 +1,4 @@
+from sequential_inference.util.rl_util import join_state_with_array
 import torch
 
 from sequential_inference.models.base.network_util import calc_kl_divergence
@@ -14,7 +15,11 @@ class SLACModelAlgorithm(VIModelAlgorithm):
         decoder,
         reward_decoder,
         action_shape,
+        kl_factor: float,
+        state_factor: float,
+        reward_factor: float,
         feature_dim=64,
+        latent_dim=64,
         latent1_dim=32,
         latent2_dim=32,
         hidden_units=[64, 64],
@@ -37,12 +42,15 @@ class SLACModelAlgorithm(VIModelAlgorithm):
             decoder,
             reward_decoder,
             latent,
+            kl_factor,
+            state_factor,
+            reward_factor,
             predict_from_prior=predict_from_prior,
             condition_on_posterior=condition_on_posterior,
         )
 
     def infer_full_sequence(self, obs, actions=None, rewards=None):
-        features_seq = self.encoder(obs, rewards)
+        features_seq = self.encoder(join_state_with_array(obs, rewards))
         horizon = obs.shape[1]
         priors = []
         posteriors = []
@@ -51,7 +59,7 @@ class SLACModelAlgorithm(VIModelAlgorithm):
         prior_latent = prior[1]
         posterior_latent = posterior[1]
         priors.append(prior)
-        posteriors.append(posteriors)
+        posteriors.append(posterior)
 
         for t in range(1, horizon):
             prior, posterior = self.latent(
@@ -65,27 +73,23 @@ class SLACModelAlgorithm(VIModelAlgorithm):
             if self.condition_on_posterior:
                 prior_latent = posterior_latent
             priors.append(prior)
-            posteriors.append(posteriors)
+            posteriors.append(posterior)
         return priors, posteriors
 
-    def infer_single_step(
-        self, last_latent, obs, action=None, rewards=None, global_belief=None
-    ):
+    def infer_single_step(self, last_latent, obs, action=None, rewards=None):
         features = self.encoder(obs, rewards)
         last_latent = last_latent[:, self.laten1_dim :]
         _, posterior = self.latent(last_latent, last_latent, features, action=action)
-        return self.get_samples(posterior), global_belief
+        return self.get_samples(posterior)
 
-    def predict_sequence(
-        self, initial_latent, actions=None, reward=None, global_belief=None
-    ):
+    def predict_sequence(self, initial_latent, actions=None, reward=None):
         prior_latent = initial_latent[:, self.laten1_dim :]
         horizon = actions.shape[1]
 
         priors = []
         for t in range(1, horizon):
             prior = self.latent.infer_prior(
-                prior_latent, actions[:, t], global_belief=global_belief
+                prior_latent, actions[:, t]
             )
             prior_latent = prior[1]
             priors.append(prior)
@@ -106,10 +110,8 @@ class SLACModelAlgorithm(VIModelAlgorithm):
 
     def get_dists(self, latent):
         latent1 = []
-        latent2 = []
 
         for l in latent:
             latent1.append(l[2])
-            latent2.append(l[3])
 
-        return latent1, latent2
+        return latent1
