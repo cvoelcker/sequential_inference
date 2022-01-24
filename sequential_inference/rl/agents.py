@@ -50,12 +50,17 @@ class InferencePolicyAgent(AbstractStatefulAgent):
         context: Optional[torch.Tensor] = None,
         explore: bool = False,
     ) -> torch.Tensor:
+        if reward is None:
+            self.state = self.model.infer_single_step
         self.state = self.model.infer_single_step(
             self.state, observation, self.last_action, reward
         )
         action = self.policy.act(observation, reward, self.state, explore)
         self.last_action = action
         return action
+
+
+class DreamerAgent
 
 
 class PolicyNetworkAgent(AbstractAgent):

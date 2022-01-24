@@ -4,10 +4,7 @@ import abc
 from tqdm import tqdm
 import torch
 
-from sequential_inference.experiments.mixins.data import (
-    AbstractDataMixin,
-    DynaSamplingMixin,
-)
+from sequential_inference.experiments.data import AbstractDataStrategy, FixedDataSamplingStrategy
 from sequential_inference.abc.experiment import AbstractExperiment, AbstractRLExperiment
 from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
 from sequential_inference.abc.rl import AbstractRLAlgorithm
@@ -18,7 +15,7 @@ from sequential_inference.util.rl_util import rollout_with_policy
 
 class TrainingExperiment(AbstractExperiment):
 
-    data: AbstractDataMixin
+    data: AbstractDataStrategy
     is_rl: bool = False
     is_model: bool = False
 
@@ -35,7 +32,7 @@ class TrainingExperiment(AbstractExperiment):
         self.epochs = epochs
         self.log_frequency = log_frequency
 
-    def set_data_sampler(self, data_sampler: AbstractDataMixin):
+    def set_data_sampler(self, data_sampler: AbstractDataStrategy):
         self.data = data_sampler
         self.data.set_experiment(self)
         self.buffer = data_sampler.buffer
@@ -91,6 +88,7 @@ class RLTrainingExperiment(AbstractRLExperiment, TrainingExperiment):
         grad_clipping: float,
     ):
         self.rl_algorithm = algorithm
+        self.rl_grad_norm = grad_clipping
         self.register_module("rl_algo", algorithm)
         if isinstance(algorithm, SACAlgorithm):
             self.actor_optimizer = optimizer(
@@ -101,32 +99,33 @@ class RLTrainingExperiment(AbstractRLExperiment, TrainingExperiment):
                 algorithm.critic.parameters(), lr=learning_rate
             )
             self.register_module("value_optimizer", self.value_optimizer)
-            self.alpha_optimizer = optimizer(algorithm.alpha, lr=learning_rate)
+            self.alpha_optimizer = optimizer(
+                algorithm.alpha.parameters(), lr=learning_rate)
             self.register_module("alpha_optimizer", self.alpha_optimizer)
 
             def step(loss):
                 q_loss, actor_loss, alpha_loss = loss
                 self.value_optimizer.zero_grad()
-                q_loss.backward()
+                q_loss.backward(retain_graph=True)
                 if self.rl_grad_norm > 0.0:
                     torch.nn.utils.clip_grad_norm_(
                         self.rl_algorithm.get_parameters(), self.model_grad_norm
                     )
-                self.value_optimizer.step(retain_graph=True)
                 self.actor_optimizer.zero_grad()
-                actor_loss.backward()
+                actor_loss.backward(retain_graph=True)
                 if self.rl_grad_norm > 0.0:
                     torch.nn.utils.clip_grad_norm_(
                         self.rl_algorithm.get_parameters(), self.model_grad_norm
                     )
-                self.actor_optimizer.step(retain_graph=True)
                 self.alpha_optimizer.zero_grad()
                 alpha_loss.backward()
                 if self.rl_grad_norm > 0.0:
                     torch.nn.utils.clip_grad_norm_(
                         self.rl_algorithm.get_parameters(), self.model_grad_norm
                     )
-                self.alpha_optimizer.step(retain_graph=True)
+                self.actor_optimizer.step()
+                self.value_optimizer.step()
+                self.alpha_optimizer.step()
 
             self._step_rl = step
 
@@ -231,7 +230,7 @@ class ModelTrainingExperiment(TrainingExperiment):
 
 class DynaTrainingExperiment(RLTrainingExperiment, ModelTrainingExperiment):
 
-    data: DynaSamplingMixin
+    data: FixedDataSamplingStrategy
 
     is_rl = True
     is_model = True
@@ -257,12 +256,13 @@ class LatentTrainingExperiment(RLTrainingExperiment, ModelTrainingExperiment):
         self,
         pass_rl_gradients_to_model: bool,
         batch_size: int,
+        rl_batch_size: int,
         epoch_steps: int,
         epochs: int,
         log_frequency: int,
     ):
         super().__init__(batch_size, epoch_steps, epochs, log_frequency)
-
+        self.rl_batch_size = rl_batch_size
         self.pass_rl_gradients_to_model = pass_rl_gradients_to_model
 
     def train_step(self) -> Dict[str, torch.Tensor]:
@@ -272,7 +272,7 @@ class LatentTrainingExperiment(RLTrainingExperiment, ModelTrainingExperiment):
 
         rl_batch = self.data.get_batch(self.rl_batch_size)
         rl_batch = self.unpack_batch(rl_batch)
-        obs, act, rew, done = self.unpack_batch(rl_batch)
+        obs, act, rew, done = rl_batch
         if self.pass_rl_gradients_to_model:
             _, latents = self.model_algorithm.infer_sequence(obs, act, rew)
             loss, rl_stats = self.rl_algorithm.compute_loss(latents, act, rew, done)
@@ -334,3 +334,25 @@ class LatentImaginationExperiment(RLTrainingExperiment, ModelTrainingExperiment)
         )
 
         return {**stats, **rl_stats}
+
+
+class DreamerExperiment(RLTrainingExperiment, ModelTrainingExperiment):
+
+    is_rl = True
+    is_model = True
+
+    def __init__(
+        self,
+        horizon: bool,
+        batch_size: int,
+        epoch_steps: int,
+        epochs: int,
+        log_frequency: int,
+    ):
+        super().__init__(batch_size, epoch_steps, epochs, log_frequency)
+
+        self.horizon = horizon
+
+    def train_step(self) -> Dict[str, torch.Tensor]:
+        # implenent Dreamer code here
+        pass

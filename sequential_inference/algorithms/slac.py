@@ -77,7 +77,7 @@ class SLACModelAlgorithm(VIModelAlgorithm):
         return priors, posteriors
 
     def infer_single_step(self, last_latent, obs, action=None, rewards=None):
-        features = self.encoder(obs, rewards)
+        features = self.encoder(join_state_with_array(obs, rewards))
         last_latent = last_latent[:, self.laten1_dim :]
         _, posterior = self.latent(last_latent, last_latent, features, action=action)
         return self.get_samples(posterior)

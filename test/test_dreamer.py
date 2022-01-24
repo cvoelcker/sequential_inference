@@ -2,7 +2,7 @@ import hydra
 import torch
 
 from sequential_inference.algorithms.factory import setup_model_algorithm
-from sequential_inference.experiments.mixins.data import FixedDataSamplingMixin
+from sequential_inference.experiments.data import FixedDataSamplingStrategy
 from sequential_inference.util.data import gather_trajectory_data
 from sequential_inference.rl.agents import RandomAgent
 from sequential_inference.data.data import TrajectoryReplayBuffer
@@ -21,7 +21,7 @@ def main(cfg):
     )
     buffer = TrajectoryReplayBuffer(10000, 200, env, sample_length=10, chp_dir="/tmp")
 
-    data_sampler = FixedDataSamplingMixin(env, buffer, 16)
+    data_sampler = FixedDataSamplingStrategy(env, buffer, 16)
     data_sampler.set_num_sampling_steps(100 * num_envs * 200)
 
     algorithm = setup_model_algorithm(env, cfg)

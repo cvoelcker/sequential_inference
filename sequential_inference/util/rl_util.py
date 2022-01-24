@@ -171,7 +171,7 @@ def run_agent_in_environment(
                 last_obs = environment.reset_mdp()
 
     if return_contexts:
-        return observations, actions, rewards, tasks, dones, contexts
+        return observations, actions, rewards, tasks, dones, contexts, latents
     else:
         return observations, actions, rewards, tasks, dones
 

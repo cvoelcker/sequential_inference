@@ -1,0 +1,9 @@
+# @package _group_
+
+algorithm: sac
+latent_input: true
+hidden_units: [128,128]
+init_alpha: 1.
+gamma: 0.99
+tau: 0.995
+update_alpha: True

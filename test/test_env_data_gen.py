@@ -4,7 +4,7 @@ from sequential_inference.envs.factory import make_vec_env
 from sequential_inference.data.data import TrajectoryReplayBuffer
 from sequential_inference.rl.agents import RandomAgent
 from sequential_inference.util.data import gather_trajectory_data
-from sequential_inference.experiments.mixins.data import FixedDataSamplingMixin
+from sequential_inference.experiments.data import FixedDataSamplingStrategy
 
 
 @hydra.main(config_path="../config", config_name="tests/dreamer_test")
@@ -17,7 +17,7 @@ def main_test(cfg):
     agent = RandomAgent(env.action_space)
     gather_trajectory_data(env, agent, buffer, num_envs * 20 * 10)
 
-    data_sampler = FixedDataSamplingMixin(env, buffer, 16)
+    data_sampler = FixedDataSamplingStrategy(env, buffer, 16)
     data_sampler.set_num_sampling_steps(2 * num_envs * 20)
     data_sampler.before_experiment()
     print(data_sampler.get_batch())

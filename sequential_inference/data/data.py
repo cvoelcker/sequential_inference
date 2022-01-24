@@ -90,12 +90,12 @@ class TrajectoryReplayBuffer(Dataset):
         return self.length
 
 
-class BatchTrajectorySampler(AbstractDataSampler):
-    """The BatchTrajectorySampler iterates infinitely over a given dataset. It models the behavior of many RL algorithms that do not sample full batches.
+class BatchDataSampler(AbstractDataSampler):
+    """The BatchDataSampler iterates infinitely over a given dataset. It models the behavior of many RL algorithms that do not sample full batches.
     To provide flexible batch sizes with minimal overhead, it holds a set of iterators for different batch sizes as "views" on the data.
     """
 
-    def __init__(self, buffer):
+    def __init__(self, buffer: Dataset):
         self.buffer = buffer
 
         self.iterators: Dict[int, Iterator[Dict[str, torch.Tensor]]] = {}

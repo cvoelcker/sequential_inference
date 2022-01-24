@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from sequential_inference.abc.common import Checkpointable
 from sequential_inference.envs.vec_env.vec_env import VecEnv
 from typing import Dict
 
@@ -18,7 +19,7 @@ from sequential_inference.abc.experiment import (
 from sequential_inference.rl.agents import RandomAgent
 
 
-class AbstractDataMixin(ExperimentMixin):
+class AbstractDataStrategy(ExperimentMixin, Checkpointable):
 
     experiment: AbstractExperiment
     env: VecEnv
@@ -48,7 +49,7 @@ class AbstractDataMixin(ExperimentMixin):
         return log
 
 
-class FixedDataSamplingMixin(AbstractDataMixin):
+class FixedDataSamplingStrategy(AbstractDataStrategy):
     buffer: TrajectoryReplayBuffer
     n: int
     dataset: BatchTrajectorySampler
@@ -69,7 +70,7 @@ class FixedDataSamplingMixin(AbstractDataMixin):
         return self.dataset.get_next(batch_size)
 
 
-class DataSamplingMixin(AbstractDataMixin):
+class OnlineDataSamplingStrategy(AbstractDataStrategy):
     buffer: TrajectoryReplayBuffer
     n: int
     n_init: int
@@ -96,41 +97,3 @@ class DataSamplingMixin(AbstractDataMixin):
 
     def get_batch(self, batch_size: int) -> Dict[str, torch.Tensor]:
         return self.dataset.get_next(batch_size)
-
-
-class OnlineDataSamplingMixin(AbstractDataMixin):
-    n: int
-    n_init: int
-
-    def set_num_sampling_steps(self, n: int, n_init: int) -> None:
-        self.n = n
-        self.n_init = n_init
-
-    def reload_preempted(self, run_dir):
-        # TODO: add data reloading shenanigans here
-        pass
-
-    def get_batch(self, batch_size: int) -> Dict[str, torch.Tensor]:
-        # TODO: fix this shit
-        return {"TODO": torch.Tensor([0.0])}
-
-
-class DynaSamplingMixin(AbstractDataMixin):
-    n: int
-    n_init: int
-
-    def set_num_sampling_steps(self, n: int, n_init: int) -> None:
-        self.n = n
-        self.n_init = n_init
-
-    def reload_preempted(self, run_dir):
-        super.reload_preempted(run_dir)
-        # TODO: add data reloading shenanigans here
-
-    def get_batch(self, batch_size: int) -> Dict[str, torch.Tensor]:
-        # TODO: fix this shit
-        return {"TODO": torch.Tensor([0.0])}
-
-    def get_model_batch(self) -> Dict[str, torch.Tensor]:
-        # TODO: fix this shit
-        return {"TODO": torch.Tensor([0.0])}

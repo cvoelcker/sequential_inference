@@ -18,6 +18,10 @@ class AbstractExperiment(Checkpointable, metaclass=abc.ABCMeta):
         self.epoch_hooks = []
 
     @abc.abstractmethod
+    def build(self, cfg, run_dir, preempted):
+        pass
+
+    @abc.abstractmethod
     def train(self, start_epoch=0):
         pass
 

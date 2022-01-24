@@ -268,7 +268,7 @@ class TanhGaussian(Gaussian):
         )
 
         self.std = std
-        self.multiplier = multiplier
+        self.multiplier = torch.Tensor(multiplier)
 
     def forward(self, x):
         x = self.net(x)
@@ -279,7 +279,7 @@ class TanhGaussian(Gaussian):
             mean, std = torch.chunk(x, 2, dim=-1)
             std = F.softplus(std) + 1e-5
 
-        return TanhNormal(loc=mean, scale=std, multiplier=self.multiplier)
+        return TanhNormal(mean=mean, std=std, multiplier=self.multiplier)
 
 
 class OffsetGaussian(nn.Module):

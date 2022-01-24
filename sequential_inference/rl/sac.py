@@ -9,12 +9,22 @@ from torch import nn
 
 from sequential_inference.abc.rl import AbstractAgent, AbstractRLAlgorithm
 from sequential_inference.rl.agents import PolicyNetworkAgent
+from sequential_inference.util.rl_util import join_state_with_array
 
 
 class AbstractActorCriticAlgorithm(AbstractRLAlgorithm):
     actor: nn.Module
     critic: nn.Module
 
+
+class AlphaModule(nn.Module):
+    def __init__(self, alpha):
+        super().__init__()
+        self.log_alpha = torch.log(torch.tensor([alpha], requires_grad=True))
+        self.log_alpha = nn.Parameter(self.log_alpha)
+
+    def forward(self):
+        return torch.exp(self.log_alpha)
 
 class SACAlgorithm(AbstractRLAlgorithm):
     def __init__(
@@ -29,13 +39,12 @@ class SACAlgorithm(AbstractRLAlgorithm):
         latent: bool = False,
         observation: bool = True,
     ):
+        super().__init__()
         self.critic = critic
         self.q_target = copy.deepcopy(self.critic)
-
         self.actor = actor
+        self.alpha = AlphaModule(alpha)
 
-        self.log_alpha = torch.log(torch.tensor([alpha], requires_grad=True))
-        self.log_alpha = nn.Parameter(self.log_alpha)
         self.update_alpha = update_alpha
         self.gamma = gamma
         self.target_entropy = -action_dim
@@ -48,7 +57,7 @@ class SACAlgorithm(AbstractRLAlgorithm):
         self.register_module("q", self.critic)
         self.register_module("qt", self.q_target)
         self.register_module("policy", self.actor)
-        self.register_module("alpha", self.log_alpha)
+        self.register_module("alpha", self.alpha)
 
     def compute_loss(
         self,
@@ -82,7 +91,7 @@ class SACAlgorithm(AbstractRLAlgorithm):
             "value_loss": q_loss.detach(),
             "actor_loss": actor_loss.detach(),
             "alpha_loss": alpha_loss.detach(),
-            "alpha": self.alpha.detach(),
+            "alpha": self.alpha().detach(),
         }
 
         return (q_loss, actor_loss, alpha_loss), stats
@@ -92,12 +101,14 @@ class SACAlgorithm(AbstractRLAlgorithm):
             # calculate one step lookahead of policy
             action_dist = self.actor(next_obs)
             act, logprob = action_dist.rsample()
-            next_q1, next_q2 = self.q_target(next_obs, act)
-            next_q = torch.min(next_q1, next_q2) - self.alpha * logprob
+            next_q1, next_q2 = self.q_target(torch.cat((next_obs, act), -1))
+            next_q = torch.min(next_q1, next_q2) - self.alpha() * logprob
             target_q = rewards.view(next_q.shape) + self.gamma * next_q
 
         # explicit shape handling to counter some serious bugs previously observed
-        q1, q2 = self.critic(obs, actions).view(target_q.shape)
+        q1, q2 = self.critic(torch.cat((obs, actions), -1))
+        q1 = q1.view(target_q.shape)
+        q2 = q2.view(target_q.shape)
 
         # masking out loss instead of transition on done to prevent introducing false terminating states
         q1_loss = torch.mean(
@@ -112,14 +123,14 @@ class SACAlgorithm(AbstractRLAlgorithm):
     def actor_loss(self, obs):
         action_dist = self.actor(obs)
         actions, logprob = action_dist.rsample()
-        q1, q2 = self.q(obs, actions)
+        q1, q2 = self.critic(torch.cat((obs, actions), -1))
         q = torch.min(q1, q2)
-        loss = torch.mean((self.alpha.detach() * logprob - q))
+        loss = torch.mean((self.alpha().detach() * logprob - q))
         return loss, logprob
 
     def alpha_loss(self, log_probs):
         return -(
-            torch.exp(self.log_alpha) * (log_probs.detach() + self.target_entropy)
+            self.alpha() * (log_probs.detach() + self.target_entropy)
         ).mean()
 
     def update_target_networks(self):
@@ -146,7 +157,3 @@ class SACAlgorithm(AbstractRLAlgorithm):
 
     def get_agent(self) -> AbstractAgent:
         return PolicyNetworkAgent(self.actor, self.latent, self.observation)
-
-    @property
-    def alpha(self):
-        return torch.exp(self.log_alpha) + 1e-5
