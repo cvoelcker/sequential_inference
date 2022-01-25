@@ -255,15 +255,21 @@ class SLACLatentNetwork(AbstractLatentModel):
         latent1_dist = self.latent1_prior(torch.cat([last_latent, action], -1))
         latent1_sample = latent1_dist.rsample()
         # p(z2(t) | z1(t), z2(t-1), a(t-1))
-        latent2_dist = self.latent2_prior(torch.cat([latent1_sample, last_latent, action], -1))
+        latent2_dist = self.latent2_prior(
+            torch.cat([latent1_sample, last_latent, action], -1)
+        )
         latent2_sample = latent2_dist.rsample()
         return (latent1_sample, latent2_sample, latent1_dist, latent2_dist)
 
     def infer_posterior(self, last_latent, state, action=None, global_belief=None):
-        latent1_dist = self.latent1_posterior(torch.cat([state, last_latent, action], -1))
+        latent1_dist = self.latent1_posterior(
+            torch.cat([state, last_latent, action], -1)
+        )
         latent1_sample = latent1_dist.rsample()
         # q(z2(t) | z1(t), z2(t-1), a(t-1))
-        latent2_dist = self.latent2_posterior(torch.cat([latent1_sample, last_latent, action], -1))
+        latent2_dist = self.latent2_posterior(
+            torch.cat([latent1_sample, last_latent, action], -1)
+        )
         latent2_sample = latent2_dist.rsample()
         return (latent1_sample, latent2_sample, latent1_dist, latent2_dist)
 

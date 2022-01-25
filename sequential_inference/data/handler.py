@@ -1,10 +1,8 @@
 from abc import abstractmethod
-from sequential_inference.abc.common import Checkpointable
+from sequential_inference.abc.data import AbstractDataHandler
 from sequential_inference.abc.rl import AbstractAgent
-from sequential_inference.envs.vec_env.vec_env import VecEnv
 from typing import Dict
 
-import gym
 import torch
 
 from sequential_inference.util.data import gather_trajectory_data, load_offline_data
@@ -13,40 +11,26 @@ from sequential_inference.data.storage import (
     BatchTrajectorySampler,
     TrajectoryReplayBuffer,
 )
-from sequential_inference.abc.experiment import (
-    AbstractExperiment,
-    AbstractRLExperiment,
-    ExperimentMixin,
-)
-from sequential_inference.rl.agents import RandomAgent
+from sequential_inference.algorithms.rl.agents import RandomAgent
 
 
-class AbstractDataStrategy(ExperimentMixin, Checkpointable):
+def setup_data(env, cfg):
+    buffer = TrajectoryReplayBuffer(
+        cfg.data.buffer_num_trajectories,
+        cfg.data.buffer_trajectory_length,
+        env,
+        sample_length=cfg.data.sample_length,
+        device=cfg.device,
+    )
 
-    experiment: AbstractExperiment
-    env: VecEnv
-    buffer: TrajectoryReplayBuffer
-
-    def __init__(
-        self,
-        env: VecEnv,
-        buffer: TrajectoryReplayBuffer,
-    ):
-        self.env = env
-        self.buffer = buffer
-
-    @abstractmethod
-    def get_batch(self, batch_size: int) -> Dict[str, torch.Tensor]:
-        pass
-
-    def initialize(self, cfg, preeempted: bool, run_dir: str):
-        pass
-
-    def update(self, log, agent, **kwargs):
-        return log
+    if cfg.data.name == "fixed":
+        return FixedDataStrategy(
+            env,
+        )
+    # TODO finish
 
 
-class FixedDataStrategy(AbstractDataStrategy):
+class FixedDataStrategy(AbstractDataHandler):
     buffer: TrajectoryReplayBuffer
     n: int
     dataset: BatchTrajectorySampler
@@ -76,7 +60,7 @@ class FixedDataStrategy(AbstractDataStrategy):
         return self.dataset.get_next(batch_size)
 
 
-class OnlineDataSamplingStrategy(AbstractDataStrategy):
+class OnlineDataSamplingStrategy(AbstractDataHandler):
     buffer: TrajectoryReplayBuffer
     n: int
     n_init: int
@@ -103,7 +87,9 @@ class OnlineDataSamplingStrategy(AbstractDataStrategy):
         self.n = n
         self.n_init = n_init
 
-    def update(self, epoch_log: Dict[str, torch.Tensor], agent: AbstractAgent, **kwargs):
+    def update(
+        self, epoch_log: Dict[str, torch.Tensor], agent: AbstractAgent, **kwargs
+    ):
         gather_trajectory_data(self.env, agent, self.buffer, self.n)
         self.dataset = BatchTrajectorySampler(self.buffer)
         super().after_epoch(epoch_log)
@@ -116,7 +102,7 @@ class OnlineDataSamplingStrategy(AbstractDataStrategy):
         return self.dataset.get_next(batch_size)
 
 
-class ModelBasedOnlineDataSamplingStrategy(AbstractDataStrategy):
+class ModelBasedOnlineDataSamplingStrategy(AbstractDataHandler):
     buffer: TrajectoryReplayBuffer
     n: int
     n_init: int
@@ -143,7 +129,9 @@ class ModelBasedOnlineDataSamplingStrategy(AbstractDataStrategy):
         self.n = n
         self.n_init = n_init
 
-    def update(self, epoch_log: Dict[str, torch.Tensor], agent: AbstractAgent, **kwargs):
+    def update(
+        self, epoch_log: Dict[str, torch.Tensor], agent: AbstractAgent, **kwargs
+    ):
         gather_trajectory_data(self.env, agent, self.buffer, self.n)
         self.dataset = BatchTrajectorySampler(self.buffer)
         super().after_epoch(epoch_log)

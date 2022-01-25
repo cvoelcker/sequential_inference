@@ -21,7 +21,7 @@ class AbstractAgent(abc.ABC):
 
         Args:
             observation (torch.Tensor): the current environment observation
-            reward (Optional[torch.Tensor]): the last recieved reward. Defaults to None.
+            reward (Optional[torch.Tensor]): the last received reward. Defaults to None.
             context (Optional[torch.Tensor], optional): a context vector, e.g. with the latent state of an inference model. Defaults to None.
 
         Returns:
@@ -63,6 +63,8 @@ class AbstractExplorationAgent(AbstractAgent, metaclass=abc.ABCMeta):
     ) -> np.ndarray:
         proposed_action = self.agent.act(observation, reward, context, explore)
         if explore:
-            return self.exploration_policy(observation, proposed_action, reward, context)
+            return self.exploration_policy(
+                observation, proposed_action, reward, context
+            )
         else:
             return proposed_action

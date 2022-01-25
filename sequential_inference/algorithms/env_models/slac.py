@@ -5,7 +5,7 @@ from sequential_inference.models.base.network_util import calc_kl_divergence
 from sequential_inference.models.dynamics.dynamics import (
     SLACLatentNetwork,
 )
-from sequential_inference.algorithms.simple_vi import VIModelAlgorithm
+from sequential_inference.algorithms.env_models.simple_vi import VIModelAlgorithm
 
 
 class SLACModelAlgorithm(VIModelAlgorithm):
@@ -88,9 +88,7 @@ class SLACModelAlgorithm(VIModelAlgorithm):
 
         priors = []
         for t in range(1, horizon):
-            prior = self.latent.infer_prior(
-                prior_latent, actions[:, t]
-            )
+            prior = self.latent.infer_prior(prior_latent, actions[:, t])
             prior_latent = prior[1]
             priors.append(prior)
         return self.get_samples(priors)

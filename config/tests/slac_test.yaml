@@ -1,5 +1,0 @@
-defaults:
-  - algorithm: slac
-  - encoder_decoder: mlp
-  - reward_decoder: mlp
-  - rl: latent_sac

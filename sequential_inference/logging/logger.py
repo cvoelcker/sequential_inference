@@ -167,7 +167,7 @@ class CsvLogger(AbstractLogger):
         self.file.close()
 
 
-class Checkpointing():
+class Checkpointing:
     def __init__(self, chp_dir, chp_name, counter=0, overwrite=False):
         self.counter = counter
         self.overwrite = overwrite

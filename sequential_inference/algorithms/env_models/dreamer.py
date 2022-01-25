@@ -1,6 +1,6 @@
 import torch
 
-from sequential_inference.algorithms.simple_vi import VIModelAlgorithm
+from sequential_inference.algorithms.env_models.simple_vi import VIModelAlgorithm
 from sequential_inference.models.dynamics.dynamics import PlaNetLatentNetwork
 
 

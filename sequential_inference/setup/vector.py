@@ -9,9 +9,9 @@ def get_slurm_id() -> str:
 def vector_preface(cfg) -> Tuple[str, bool]:
     log_dir = os.getcwd()
 
-    if cfg.cluster == "vector":
+    if cfg.cluster == "vector" and get_slurm_id() != "0":
         chp_dir = "/checkpoint/{}/{}/chp".format(os.getenv("USER"), get_slurm_id())
-    elif cfg.cluster == "local":
+    elif cfg.cluster == "vector" or cfg.cluster == "local":
         chp_dir = os.path.join(log_dir, "chp")
     else:
         raise NotImplementedError(f"Computing on {cfg.cluster} is not implemented")

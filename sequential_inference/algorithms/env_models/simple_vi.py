@@ -1,5 +1,4 @@
 from sequential_inference.util.rl_util import join_state_with_array
-from typing import Optional
 import torch
 from sequential_inference.models.base.network_util import calc_kl_divergence
 from sequential_inference.models.dynamics.dynamics import SimpleLatentNetwork
@@ -83,7 +82,7 @@ class VIModelAlgorithm(AbstractSequenceAlgorithm):
         dones: torch.Tensor,
     ):
 
-        dones = 1. - dones
+        dones = 1.0 - dones
         stats = {}
 
         priors, posteriors = self.infer_full_sequence(

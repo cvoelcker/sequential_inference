@@ -1,4 +1,13 @@
-class DynaTrainingExperiment(RLTrainingExperiment, ModelTrainingExperiment):
+from typing import Dict
+
+import torch
+
+from sequential_inference.abc.data import Env
+from sequential_inference.experiments.base import ModelBasedRLTrainingExperiment
+from sequential_inference.util.rl_util import rollout_with_policy
+
+
+class DynaTrainingExperiment(ModelBasedRLTrainingExperiment):
 
     # TODO: Handle dual data sampling strategies
 
@@ -16,7 +25,8 @@ class DynaTrainingExperiment(RLTrainingExperiment, ModelTrainingExperiment):
 
         return {**stats, **rl_stats}
 
-class LatentImaginationExperiment(RLTrainingExperiment, ModelTrainingExperiment):
+
+class LatentImaginationExperiment(ModelBasedRLTrainingExperiment):
 
     is_rl = True
     is_model = True
@@ -58,4 +68,3 @@ class LatentImaginationExperiment(RLTrainingExperiment, ModelTrainingExperiment)
         )
 
         return {**stats, **rl_stats}
-

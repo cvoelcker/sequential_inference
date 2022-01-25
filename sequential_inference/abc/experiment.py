@@ -1,6 +1,11 @@
+import os
+
 import abc
+
+from omegaconf import omegaconf
+from sequential_inference.abc.data import AbstractDataHandler
 from sequential_inference.abc.rl import AbstractRLAlgorithm
-from typing import Dict
+from typing import Dict, Optional
 
 import torch
 
@@ -16,17 +21,44 @@ class AbstractExperiment(Checkpointable, metaclass=abc.ABCMeta):
         super().__init__()
         self.observers = []
         self.epoch_hooks = []
+        self.data: Optional[AbstractDataHandler] = None
 
     @abc.abstractmethod
-    def build(self, cfg, run_dir: str, preempted: bool):
+    def run(self, status: Dict[str, str]):
+        """Run the experiment
+
+        Args:
+            status (Dict[str, str]): the status of the experiment
+        """
         pass
 
-    @abc.abstractmethod
-    def train(self, start_epoch=0):
-        pass
+    def set_data_handler(self, data: AbstractDataHandler):
+        self.data = data
 
-    def before_experiment(self):
-        pass
+    def initialize(self, cfg: omegaconf.DictConfig, preempted: bool, run_dir: str):
+        """Initialize the experiment, either collecting new data and using the default models, or loading a checkpointed model
+
+        Args:
+            cfg (omegaconf.DictConfig):the global config object
+            preempted (bool): a flag checking for preempted training
+            run_dir (str): the directory to store the experiment
+        """
+        experiment_status = {}
+        if preempted:
+            with open(os.path.join(run_dir, "status"), "rb") as f:
+                experiment_status["status"] = f.readlines().join("")
+            checkpoints = os.path.join(run_dir, "checkpoints")
+            list_dir = os.listdir(checkpoints)
+            experiment_status["checkpoint_number"] = len(list_dir)
+            checkpoint_location = sorted(list_dir)[-1]
+            self.load(os.path.join(checkpoints, checkpoint_location))
+        else:
+            experiment_status["status"] = "new"
+            experiment_status["checkpoint_number"] = 0
+        
+        self.data.initialize(cfg, preempted, run_dir)
+
+        return experiment_status
 
     def after_experiment(self):
         self.close_observers()
@@ -65,12 +97,3 @@ class AbstractRLExperiment(AbstractExperiment, metaclass=abc.ABCMeta):
         return self.rl_algorithm.get_policy()
 
 
-class ExperimentMixin(abc.ABC):
-    """This ABC mostly exists for the type hierarchy, the mixins
-    can be fully flexible
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    pass

@@ -8,7 +8,7 @@ import torch
 from torch import nn
 
 from sequential_inference.abc.rl import AbstractAgent, AbstractRLAlgorithm
-from sequential_inference.rl.agents import PolicyNetworkAgent
+from sequential_inference.algorithms.rl.agents import PolicyNetworkAgent
 from sequential_inference.util.rl_util import join_state_with_array
 
 
@@ -25,6 +25,7 @@ class AlphaModule(nn.Module):
 
     def forward(self):
         return torch.exp(self.log_alpha)
+
 
 class SACAlgorithm(AbstractRLAlgorithm):
     def __init__(
@@ -129,9 +130,7 @@ class SACAlgorithm(AbstractRLAlgorithm):
         return loss, logprob
 
     def alpha_loss(self, log_probs):
-        return -(
-            self.alpha() * (log_probs.detach() + self.target_entropy)
-        ).mean()
+        return -(self.alpha() * (log_probs.detach() + self.target_entropy)).mean()
 
     def update_target_networks(self):
         """

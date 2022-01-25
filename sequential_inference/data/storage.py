@@ -1,13 +1,9 @@
-import os
-import pickle
 import itertools
 from typing import Dict, Iterator
-from tqdm import tqdm
 
 import torch
 from torch.utils.data import Dataset
-
-import numpy as np
+from sequential_inference.abc.data import AbstractDataBuffer
 
 from sequential_inference.abc.util import AbstractDataSampler
 
@@ -15,7 +11,7 @@ USE_GPU = torch.cuda.is_available()
 DEVICE = "cuda" if USE_GPU else "cpu"
 
 
-class TrajectoryReplayBuffer(Dataset):
+class TrajectoryReplayBuffer(AbstractDataBuffer, Dataset):
     def __init__(
         self,
         num_trajectories,

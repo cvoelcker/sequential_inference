@@ -1,6 +1,4 @@
-from rl_scaffolding.models.VAE.image_vae import BroadcastVAE
 import torch
-from torch import nn
 
 from sequential_inference.models.vae.vae_core import VAECore
 from sequential_inference.models.base.base_nets import create_mlp

@@ -33,13 +33,16 @@ class DummyAgent(AbstractAgent):
         contexts: Optional[torch.Tensor] = None,
         explore: bool = False,
     ) -> torch.Tensor:
-        raise RuntimeError("DummyAgent is not meant to act and should only be \
+        raise RuntimeError(
+            "DummyAgent is not meant to act and should only be \
             used in model training experiments or offline RL experiments during \
-            training")
+            training"
+        )
 
 
 class PolicyNetworkAgent(AbstractAgent):
     """SAC type agent where the policy is a neural network representing a distribution"""
+
     def __init__(self, policy: torch.nn.Module, latent: bool, observation: bool):
         self.policy = policy
         self.latent = latent
@@ -93,11 +96,10 @@ class InferencePolicyAgent(AbstractAgent):
         context: Optional[torch.Tensor] = None,
         explore: bool = False,
     ) -> torch.Tensor:
-        #TODO: check if inference handles reward=None gracefully
+        # TODO: check if inference handles reward=None gracefully
         self.state = self.model.infer_single_step(
             self.state, observation, self.last_action, reward
         )
         action = self.policy.act(observation, reward, self.state, explore)
         self.last_action = action
         return action
-

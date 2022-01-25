@@ -6,7 +6,7 @@ import torch
 import numpy as np
 
 from sequential_inference.envs.vec_env.vec_env import VecEnv
-from sequential_inference.abc.rl import AbstractAgent, AbstractStatefulAgent
+from sequential_inference.abc.rl import AbstractAgent
 from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
 
 
@@ -111,14 +111,9 @@ def run_agent_in_environment(
     randomize_tasks: bool = True,
     return_contexts: bool = False,
 ) -> Tuple[List[torch.Tensor], ...]:
-    stateful = isinstance(policy, AbstractStatefulAgent)
-    assert (
-        not return_contexts or stateful
-    ), "Cannot return contexts if the inference agent does not hold any"
     actions = []
     observations = []
     rewards = []
-    contexts = []
     tasks = []
     dones = []
     latents = []
@@ -133,8 +128,7 @@ def run_agent_in_environment(
         last_obs = environment.reset_mdp()
     reward = None
 
-    if stateful:
-        policy.reset()
+    policy.reset()
     for _ in tqdm(range(steps)):
         action = policy.act(last_obs, reward, explore=explore)
         next_obs, reward, done, info = environment.step(action)
@@ -148,8 +142,8 @@ def run_agent_in_environment(
 
         if torch.all(done):
             # move buffer entries to return lists
-            if stateful:
-                policy.reset()
+            policy.reset()
+            if return_contexts:
                 for obs, act, rew, done, task, ltn in buffer.empty():
                     observations.append(obs)
                     actions.append(act)
@@ -171,7 +165,7 @@ def run_agent_in_environment(
                 last_obs = environment.reset_mdp()
 
     if return_contexts:
-        return observations, actions, rewards, tasks, dones, contexts, latents
+        return observations, actions, rewards, tasks, dones, latents
     else:
         return observations, actions, rewards, tasks, dones
 

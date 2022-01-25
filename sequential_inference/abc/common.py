@@ -1,10 +1,15 @@
 import abc
-from typing import Dict, Optional, OrderedDict
+from typing import Dict, Optional, OrderedDict, Tuple, Union
 
 import torch
 
 
 class Checkpointable(abc.ABC):
+    """
+    An abstract class for components that can be saved and loaded.
+
+    The components are kept in a nested dictionary, where the leaves are pytorch modules.
+    """
 
     device: str
 
@@ -14,20 +19,40 @@ class Checkpointable(abc.ABC):
         super().__init__()
 
     def state_dict(self):
+        """Returns the state dict from the model buffer (compatibility with torch.nn.Module)
+
+        Returns:
+            Dict: the (potentially nested) state dict
+        """
         to_save = {}
         for k, v in self.model_buffer.items():
             to_save[k] = v.state_dict()
         return to_save
 
     def load_state_dict(self, chp: Dict[str, OrderedDict]):
+        """Loads the dictionary into the model buffer (compatibility with torch.nn.Module)
+
+        Args:
+            chp (Dict[str, OrderedDict]): the (potentially nested) state dict that should be loaded
+        """
         for k, v in self.model_buffer.items():
             v.load_state_dict(chp[k])
 
     def load(self, directory: str):
+        """
+        Loads the state dict from the given directory and loads it into the model buffer.
+        """
         chp = torch.load(directory, map_location=self.device)
         self.load_state_dict(chp)
 
     def register_module(self, key: str, module: torch.nn.Module):
+        """
+        Registers a module in the model buffer.
+        Args:
+            key (str): the key to register the module under
+            module (torch.nn.Module or Dict): the module to register (needs to provide state dict)
+        """
+
         if key in self.model_buffer.keys():
             raise KeyError("Key in module buffer is not unique")
         else:
@@ -50,12 +75,43 @@ class AbstractAlgorithm(Checkpointable, metaclass=abc.ABCMeta):
         actions: Optional[torch.Tensor] = None,
         rewards: Optional[torch.Tensor] = None,
         done: Optional[torch.Tensor] = None,
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, Dict]:
+        """
+        Abstract method to compute a loss function from an observation sequence
+
+        Generally expects the tensors to be of shape (batch_size, horizon, ...) and indexed using regular RL notation.
+
+        Args:
+            obs (torch.Tensor): a tensor of observations
+            actions (Optional[torch.Tensor], optional): a tensor of actions. Defaults to None.
+            rewards (Optional[torch.Tensor], optional): a tensor of rewards. Defaults to None.
+            done (Optional[torch.Tensor], optional): a tensor of done flags. Defaults to None.
+
+        Raises:
+            NotImplementedError: cannot be called directly, needs to be subclassed
+
+        Returns:
+            torch.Tensor: the loss
+            Dict: a dictionary containing additional information about the loss
+        """
         raise NotImplementedError("Cannot instantiate Abstract")
 
-    def get_parameters(self):
+    def get_parameters(self) -> Union[Dict, torch.nn.Module]:
+        """Returns the parameters of the contained modules. Useful for freezing all related parameters
+
+        Returns:
+            List[torch.nn.Module]: a list of parameter instances (can break with nested modules)
+        """
         params = []
         for k, v in self.model_buffer.items():
             # needs to concatenate the list to flatten them
             params += list(v.parameters())
         return params
+
+    def get_optimizer(self) -> Union[torch.optim.Optimizer, Dict]:
+        """Returns the optimizer for the contained modules
+
+        Returns:
+            torch.optim.Optimizer: the optimizer or a dictionary of optimizers
+        """
+        raise NotImplementedError("Cannot instantiate Abstract")

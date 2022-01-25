@@ -90,6 +90,7 @@ def center_of_mass(mask, device="cuda"):
         [torch.sum(mask * grids[d], [-2, -1]) / norm for d in range(2)], -1
     )
 
+
 # Modified from https://github.com/juliusfrost/dreamer-pytorch
 class FreezeParameters:
     def __init__(self, parameters: List[nn.Parameter]):
