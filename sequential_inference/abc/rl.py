@@ -29,6 +29,10 @@ class AbstractAgent(abc.ABC):
         """
         pass
 
+    def reset(self):
+        """Resets the internal agent on environment reset"""
+        pass
+
 
 class AbstractRLAlgorithm(AbstractAlgorithm, metaclass=abc.ABCMeta):
     @abc.abstractmethod
@@ -58,11 +62,7 @@ class AbstractExplorationAgent(AbstractAgent, metaclass=abc.ABCMeta):
         explore: bool = False,
     ) -> np.ndarray:
         proposed_action = self.agent.act(observation, reward, context, explore)
-        return self.exploration_policy(observation, proposed_action, reward, context)
-
-
-class AbstractStatefulAgent(AbstractAgent, metaclass=abc.ABCMeta):
-    @abc.abstractmethod
-    def reset(self):
-        """Resets the internal agent on environment reset"""
-        pass
+        if explore:
+            return self.exploration_policy(observation, proposed_action, reward, context)
+        else:
+            return proposed_action

@@ -23,7 +23,6 @@ class TrajectoryReplayBuffer(Dataset):
         env,
         sample_length=1,
         device="cpu",
-        chp_dir=None,
     ):
         obs_space = env.observation_space
         obs_type = env.reset().dtype
@@ -47,19 +46,7 @@ class TrajectoryReplayBuffer(Dataset):
         self.fill_counter = 0
         self.full = False
 
-        self.chp_dir = chp_dir
-
-    def insert(self, trajectory, save=True):
-        assert not (save and self.chp_dir is None)
-        if save:
-            with torch.no_grad():
-                torch.save(
-                    {k: v.detach().cpu().numpy() for k, v in trajectory.items()},
-                    os.path.join(
-                        self.chp_dir, f"checkpoint_data_{self.fill_counter:09d}"
-                    ),
-                )
-
+    def insert(self, trajectory):
         self.s[self.fill_counter] = trajectory["obs"].to(DEVICE).detach()
         self.a[self.fill_counter] = trajectory["act"].to(DEVICE).detach()
         self.r[self.fill_counter] = trajectory["rew"].to(DEVICE).detach()

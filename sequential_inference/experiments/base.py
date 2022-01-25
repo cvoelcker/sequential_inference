@@ -1,56 +1,56 @@
 from typing import Dict, Tuple
 import abc
+from sequential_inference.abc.env import Env
+from sequential_inference.setup.factory import setup_data, setup_rl_algorithm, setup_model_algorithm, setup_optimizer
+from sequential_inference.setup.factory import setup_optimizer
 
 from tqdm import tqdm
 import torch
 
-from sequential_inference.experiments.data import AbstractDataStrategy, FixedDataSamplingStrategy
 from sequential_inference.abc.experiment import AbstractExperiment, AbstractRLExperiment
 from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
 from sequential_inference.abc.rl import AbstractRLAlgorithm
 from sequential_inference.rl.sac import AbstractActorCriticAlgorithm, SACAlgorithm
-from sequential_inference.rl.agents import InferencePolicyAgent
-from sequential_inference.util.rl_util import rollout_with_policy
 
 
 class TrainingExperiment(AbstractExperiment):
 
-    data: AbstractDataStrategy
     is_rl: bool = False
     is_model: bool = False
 
     def __init__(
         self,
+        env: Env,
         batch_size: int,
         epoch_steps: int,
         epochs: int,
-        log_frequency: int,
     ):
         super().__init__()
+        self.env = env
         self.batch_size = batch_size
         self.epoch_steps = epoch_steps
         self.epochs = epochs
-        self.log_frequency = log_frequency
 
-    def set_data_sampler(self, data_sampler: AbstractDataStrategy):
-        self.data = data_sampler
-        self.data.set_experiment(self)
-        self.buffer = data_sampler.buffer
+    def build(self, cfg, preempted: bool, run_dir: str):
+        #TODO: figure out the hydra instantiation toolkit, this should really help here
+        self.data = setup_data(self.env, cfg)
+        self.data.initialize(cfg, preempted, run_dir)
+
+        if preempted:
+            # TODO: make sure latest checkpoint is loaded
+            self.load(run_dir)
 
     def train(self, start_epoch: int = 0):
         total_train_steps = start_epoch * self.epoch_steps
         self.before_experiment()
-        for e in range(start_epoch, self.epochs):
-            print(f"Training epoch {e + 1}/{self.epochs} for {self.epoch_steps} steps")
+        for _ in range(start_epoch, self.epochs):
             for _ in tqdm(range(self.epoch_steps)):
                 stats = self.train_step()
                 self.notify_observers("step", stats, total_train_steps)
-                if total_train_steps % self.log_frequency == 0:
-                    self.notify_observers("log", stats, total_train_steps)
                 total_train_steps += 1
             epoch_log = self.after_epoch({})
-            print(stats)
             self.notify_observers("epoch", epoch_log, total_train_steps)
+            self.checkpoint(self)
         self.close_observers()
 
     def after_epoch(self, d):
@@ -80,6 +80,12 @@ class RLTrainingExperiment(AbstractRLExperiment, TrainingExperiment):
 
     is_rl: bool = True
 
+    def build(self, cfg, run_dir: str, preempted: bool):
+        rl_algorithm = setup_rl_algorithm(self.env, cfg)
+        optimizer = setup_optimizer(cfg.rl.optimizer)
+        self.set_rl_algorithm(rl_algorithm, optimizer, cfg.rl.learning_rate, cfg.rl.grad_clipping)
+        super().build(cfg, preempted, run_dir)
+
     def set_rl_algorithm(
         self,
         algorithm: AbstractRLAlgorithm,
@@ -87,6 +93,7 @@ class RLTrainingExperiment(AbstractRLExperiment, TrainingExperiment):
         learning_rate: float,
         grad_clipping: float,
     ):
+        #TODO: probably separate this out into different classes to reduce depth and compleity here
         self.rl_algorithm = algorithm
         self.rl_grad_norm = grad_clipping
         self.register_module("rl_algo", algorithm)
@@ -195,6 +202,12 @@ class ModelTrainingExperiment(TrainingExperiment):
 
     is_model = True
 
+    def build(self, cfg, run_dir: str, preempted: bool):
+        model_algorithm = setup_model_algorithm(self.env, cfg)
+        optimizer = setup_optimizer(cfg.model.optimizer)
+        self.set_model_algorithm(model_algorithm, optimizer, cfg.model.learning_rate, cfg.model.grad_clipping)
+        super().build(cfg, preempted, run_dir)
+
     def set_model_algorithm(
         self,
         algorithm: AbstractSequenceAlgorithm,
@@ -226,133 +239,3 @@ class ModelTrainingExperiment(TrainingExperiment):
                 self.model_algorithm.get_parameters(), self.model_grad_norm
             )
         self.model_optimizer.step()
-
-
-class DynaTrainingExperiment(RLTrainingExperiment, ModelTrainingExperiment):
-
-    data: FixedDataSamplingStrategy
-
-    is_rl = True
-    is_model = True
-
-    def train_step(self) -> Dict[str, torch.Tensor]:
-        batch = self.data.get_batch(self.batch_size)
-        unpacked_batch = self.unpack_batch(batch)
-        stats = self.model_train_step(*unpacked_batch)
-
-        rl_batch = self.data.get_model_batch(self.model_batch_size)
-        unpacked_rl_batch = self.unpack_batch(rl_batch)
-        rl_stats = self.rl_train_step(*unpacked_rl_batch)
-
-        return {**stats, **rl_stats}
-
-
-class LatentTrainingExperiment(RLTrainingExperiment, ModelTrainingExperiment):
-
-    is_rl = True
-    is_model = True
-
-    def __init__(
-        self,
-        pass_rl_gradients_to_model: bool,
-        batch_size: int,
-        rl_batch_size: int,
-        epoch_steps: int,
-        epochs: int,
-        log_frequency: int,
-    ):
-        super().__init__(batch_size, epoch_steps, epochs, log_frequency)
-        self.rl_batch_size = rl_batch_size
-        self.pass_rl_gradients_to_model = pass_rl_gradients_to_model
-
-    def train_step(self) -> Dict[str, torch.Tensor]:
-        batch = self.data.get_batch(self.batch_size)
-        unpacked_batch = self.unpack_batch(batch)
-        stats = self.model_train_step(*unpacked_batch)
-
-        rl_batch = self.data.get_batch(self.rl_batch_size)
-        rl_batch = self.unpack_batch(rl_batch)
-        obs, act, rew, done = rl_batch
-        if self.pass_rl_gradients_to_model:
-            _, latents = self.model_algorithm.infer_sequence(obs, act, rew)
-            loss, rl_stats = self.rl_algorithm.compute_loss(latents, act, rew, done)
-            self.step_rl_optimizer(loss)
-            self.step_model_optimizer(loss)
-        else:
-            with torch.no_grad():
-                _, latents = self.model_algorithm.infer_sequence(obs, act, rew)
-            loss, rl_stats = self.rl_algorithm.compute_loss(latents, act, rew, done)
-            self.step_rl_optimizer(loss)
-
-        return {**stats, **rl_stats}
-
-    def get_agent(self) -> InferencePolicyAgent:
-        agent: InferencePolicyAgent = self.rl_algorithm.get_agent()
-        agent.latent = True
-        agent.observation = False
-        return InferencePolicyAgent(agent, self.model_algorithm)
-
-
-class LatentImaginationExperiment(RLTrainingExperiment, ModelTrainingExperiment):
-
-    is_rl = True
-    is_model = True
-
-    def __init__(
-        self,
-        horizon: bool,
-        batch_size: int,
-        epoch_steps: int,
-        epochs: int,
-        log_frequency: int,
-    ):
-        super().__init__(batch_size, epoch_steps, epochs, log_frequency)
-
-        self.horizon = horizon
-
-    def train_step(self) -> Dict[str, torch.Tensor]:
-        batch = self.data.get_batch(self.batch_size)
-        unpacked_batch = self.unpack_batch(batch)
-        stats = self.model_train_step(*unpacked_batch)
-
-        rl_batch = self.data.get_batch(self.rl_batch_size)
-        obs, act, rew, done = self.unpack_batch(rl_batch)
-        with torch.no_grad():
-            _, latents = self.model_algorithm.infer_sequence(obs, act, rew, done)
-
-        predicted_latents, predicted_actions, rewards = rollout_with_policy(
-            latents[:, -1],
-            self.model_algorithm,
-            self.rl_algorithm.get_agent(),
-            self.horizon,
-            reconstruct=False,
-            explore=True,
-        )
-
-        rl_stats = self.rl_train_step(
-            predicted_latents, predicted_actions, rewards, None
-        )
-
-        return {**stats, **rl_stats}
-
-
-class DreamerExperiment(RLTrainingExperiment, ModelTrainingExperiment):
-
-    is_rl = True
-    is_model = True
-
-    def __init__(
-        self,
-        horizon: bool,
-        batch_size: int,
-        epoch_steps: int,
-        epochs: int,
-        log_frequency: int,
-    ):
-        super().__init__(batch_size, epoch_steps, epochs, log_frequency)
-
-        self.horizon = horizon
-
-    def train_step(self) -> Dict[str, torch.Tensor]:
-        # implenent Dreamer code here
-        pass

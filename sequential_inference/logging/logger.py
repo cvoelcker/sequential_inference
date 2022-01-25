@@ -6,7 +6,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from sequential_inference.abc.experiment import AbstractExperiment
-from sequential_inference.abc.util import Logger
+from sequential_inference.abc.util import AbstractLogger
 
 
 def mean_dict(lod):
@@ -19,7 +19,7 @@ def mean_dict(lod):
     return mean_d
 
 
-class CmdLogger(Logger):
+class CmdLogger(AbstractLogger):
     def __init__(self, keys):
         self.keys = keys
 
@@ -28,7 +28,7 @@ class CmdLogger(Logger):
             print(x)
 
 
-class CmdAverageLogger(Logger):
+class CmdAverageLogger(AbstractLogger):
     def __init__(self):
         self.d = []
 
@@ -40,7 +40,7 @@ class CmdAverageLogger(Logger):
             self.d = []
 
 
-class FileLogger(Logger):
+class FileLogger(AbstractLogger):
     def __init__(self, file_name="log.pkl", keys=("step",)):
         self.file_name = file_name
         self.keys = keys
@@ -55,7 +55,7 @@ class FileLogger(Logger):
             pickle.dump(self.d, f)
 
 
-class TorchTensorboardHandler(Logger):
+class TorchTensorboardHandler(AbstractLogger):
     def __init__(
         self,
         logdir="tb_logs",
@@ -117,7 +117,7 @@ class TorchTensorboardHandler(Logger):
         self.step = 0
 
 
-class CsvLogger(Logger):
+class CsvLogger(AbstractLogger):
     def __init__(self, save_dir, log_name, keys=("log",), overwrite=False):
         self.scalars_names = []
         self.scalars_names_is_full = False
@@ -167,7 +167,7 @@ class CsvLogger(Logger):
         self.file.close()
 
 
-class Checkpointing:
+class Checkpointing():
     def __init__(self, chp_dir, chp_name, counter=0, overwrite=False):
         self.counter = counter
         self.overwrite = overwrite

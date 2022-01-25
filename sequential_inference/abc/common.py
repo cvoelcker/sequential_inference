@@ -23,6 +23,10 @@ class Checkpointable(abc.ABC):
         for k, v in self.model_buffer.items():
             v.load_state_dict(chp[k])
 
+    def load(self, directory: str):
+        chp = torch.load(directory, map_location=self.device)
+        self.load_state_dict(chp)
+
     def register_module(self, key: str, module: torch.nn.Module):
         if key in self.model_buffer.keys():
             raise KeyError("Key in module buffer is not unique")

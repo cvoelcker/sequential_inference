@@ -48,7 +48,7 @@ def make_vec_env(
     return VecTorch(venvs)
 
 
-def setup_envs(cfg):
+def setup_environment(cfg):
     env_name = cfg.env.env_name
     n_envs = cfg.env.n_envs
     time_limit = cfg.env.time_limit

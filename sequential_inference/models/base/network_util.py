@@ -1,10 +1,12 @@
 from typing import List
+
+import numpy as np
+
 import torch
-from torch import nn
+import torch.nn as nn
 import torch.nn.functional as F
 import torch.distributions as dists
 from torch.distributions.kl import kl_divergence
-import numpy as np
 
 
 def create_coord_buffer(patch_shape):
@@ -87,3 +89,17 @@ def center_of_mass(mask, device="cuda"):
     return torch.stack(
         [torch.sum(mask * grids[d], [-2, -1]) / norm for d in range(2)], -1
     )
+
+# Modified from https://github.com/juliusfrost/dreamer-pytorch
+class FreezeParameters:
+    def __init__(self, parameters: List[nn.Parameter]):
+        self.parameters = parameters
+        self.param_states = [p.requires_grad for p in self.parameters]
+
+    def __enter__(self):
+        for param in self.parameters:
+            param.requires_grad = False
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        for i, param in enumerate(self.parameters):
+            param.requires_grad = self.param_states[i]

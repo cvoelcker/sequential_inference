@@ -3,5 +3,3 @@ defaults:
   - encoder_decoder: mlp
   - reward_decoder: mlp
   - rl: latent_sac
-
-add_global_belief: False

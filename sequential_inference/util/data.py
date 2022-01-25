@@ -2,7 +2,7 @@ import torch
 
 from sequential_inference.abc.rl import AbstractAgent
 from sequential_inference.util.rl_util import run_agent_in_environment
-from sequential_inference.data.data import TrajectoryReplayBuffer
+from sequential_inference.data.storage import TrajectoryReplayBuffer
 from sequential_inference.envs.vec_env.vec_env import VecEnv
 
 

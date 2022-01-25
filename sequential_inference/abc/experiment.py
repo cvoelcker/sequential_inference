@@ -18,7 +18,7 @@ class AbstractExperiment(Checkpointable, metaclass=abc.ABCMeta):
         self.epoch_hooks = []
 
     @abc.abstractmethod
-    def build(self, cfg, run_dir, preempted):
+    def build(self, cfg, run_dir: str, preempted: bool):
         pass
 
     @abc.abstractmethod
@@ -42,6 +42,10 @@ class AbstractExperiment(Checkpointable, metaclass=abc.ABCMeta):
 
     def register_observer(self, observer):
         self.observers.append(observer)
+
+    def register_observers(self, observers):
+        for observer in observers:
+            self.register_observer(observer)
 
     def notify_observers(self, keyword, data, step):
         for observer in self.observers:
