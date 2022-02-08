@@ -189,7 +189,7 @@ class SawyerDrawerEnv(SawyerXYZEnv):
 
             if self.reachCompleted:
                 pullRew = 1000 * (self.maxDist - pullDist) + c1 * (
-                    np.exp(-(pullDist ** 2) / c2) + np.exp(-(pullDist ** 2) / c3)
+                    np.exp(-(pullDist**2) / c2) + np.exp(-(pullDist**2) / c3)
                 )
                 pullRew = max(pullRew, 0)
                 return pullRew

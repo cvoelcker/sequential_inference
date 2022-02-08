@@ -182,3 +182,7 @@ def join_state_with_array(state: torch.Tensor, action: torch.Tensor) -> torch.Te
         return inp
     else:
         return torch.cat((state, action), -1)
+
+
+def load_agent():
+    raise NotImplementedError("Agent loading not yet available")

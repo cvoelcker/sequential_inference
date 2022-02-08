@@ -1,22 +1,28 @@
 import os
 from typing import Tuple
 
+import omegaconf
+
 
 def get_slurm_id() -> str:
     return os.getenv("SLURM_JOB_ID") or "0"
 
 
-def vector_preface(cfg) -> Tuple[str, bool]:
-    log_dir = os.getcwd()
+def vector_preface(cfg: omegaconf.DictConfig) -> bool:
+    """Modifies the config to include the correct checkpointing path and checks whether a previous checkpoint exists
 
+    Args:
+        cfg (omegaconf.DictConfig): the current config
+
+    Returns:
+        bool: checks for existing chp
+    """
+    chp_dir = os.getcwd()
     if cfg.cluster == "vector" and get_slurm_id() != "0":
         chp_dir = "/checkpoint/{}/{}/chp".format(os.getenv("USER"), get_slurm_id())
-    elif cfg.cluster == "vector" or cfg.cluster == "local":
-        chp_dir = os.path.join(log_dir, "chp")
-    else:
-        raise NotImplementedError(f"Computing on {cfg.cluster} is not implemented")
-
+    chp_dir = os.path.join(chp_dir, "chp")
+    setattr(cfg, "chp_dir", chp_dir)
     if not os.path.exists(chp_dir):
         os.mkdir(chp_dir)
-        return chp_dir, False
-    return chp_dir, True
+        return False
+    return True

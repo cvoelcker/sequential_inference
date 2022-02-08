@@ -183,21 +183,21 @@ class UNet(nn.Module):
         self.down_convs = nn.ModuleList()
         cur_in_channels = in_channels
         for i in range(num_blocks):
-            self.down_convs.append(double_conv(cur_in_channels, channel_base * 2 ** i))
-            cur_in_channels = channel_base * 2 ** i
+            self.down_convs.append(double_conv(cur_in_channels, channel_base * 2**i))
+            cur_in_channels = channel_base * 2**i
 
         self.tconvs = nn.ModuleList()
         for i in range(num_blocks - 1, 0, -1):
             self.tconvs.append(
                 nn.ConvTranspose2d(
-                    channel_base * 2 ** i, channel_base * 2 ** (i - 1), 2, stride=2
+                    channel_base * 2**i, channel_base * 2 ** (i - 1), 2, stride=2
                 )
             )
 
         self.up_convs = nn.ModuleList()
         for i in range(num_blocks - 2, -1, -1):
             self.up_convs.append(
-                double_conv(channel_base * 2 ** (i + 1), channel_base * 2 ** i)
+                double_conv(channel_base * 2 ** (i + 1), channel_base * 2**i)
             )
 
         self.final_conv = nn.Conv2d(channel_base, out_channels, 1)
@@ -397,11 +397,11 @@ class SLACEncoder(nn.Module):
 
 
 class TwinnedMLP(nn.Module):
-    def __init__(self, input_dim, output_dim, layer_sizes):
+    def __init__(self, input_dim, output_dim, hidden_units):
         super().__init__()
 
-        self.net1 = create_mlp(input_dim, output_dim, layer_sizes)
-        self.net2 = create_mlp(input_dim, output_dim, layer_sizes)
+        self.net1 = create_mlp(input_dim, output_dim, hidden_units)
+        self.net2 = create_mlp(input_dim, output_dim, hidden_units)
 
     def forward(self, x):
         return self.net1(x), self.net2(x)

@@ -3,28 +3,28 @@
 
 # from torch import nn
 # from typing import Dict, Type
-# 
+#
 # from sequential_inference.abc.env import Env
 # from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
 # from sequential_inference.abc.experiment import AbstractExperiment
-# 
+#
 # from sequential_inference.data.strategy import *
-# 
+#
 # from sequential_inference.experiments.base import *
 # from sequential_inference.experiments.latent_dyna import *
 # from sequential_inference.experiments.latent_rl import *
 # from sequential_inference.experiments.dreamer import *
-# 
+#
 # from sequential_inference.models.base.base_nets import *
-# 
+#
 # from sequential_inference.algorithms.rl.sac import SACAlgorithm
-# 
+#
 # from sequential_inference.algorithms.env_models.simple_stove import SimplifiedStoveAlgorithm
 # from sequential_inference.algorithms.env_models.slac import SLACModelAlgorithm
 # from sequential_inference.algorithms.env_models.simple_vi import VIModelAlgorithm
 # from sequential_inference.algorithms.env_models.dreamer import DreamerAlgorithm
-# 
-# 
+#
+#
 # EXPERIMENT_REGISTRY: Dict[str, Type[AbstractExperiment]] = {
 #     "latent_model_rl": LatentTrainingExperiment,
 #     "latent_imagination_rl": LatentImaginationExperiment,
@@ -32,30 +32,30 @@
 #     "model_training": ModelTrainingExperiment,
 #     "rl_training": RLTrainingExperiment,
 # }
-# 
+#
 # MODEL_ALGORITHM_REGISTRY = {
 #     "Dreamer": DreamerAlgorithm,
 #     "SimpleVI": VIModelAlgorithm,
 #     "SLAC": SLACModelAlgorithm,
 #     "SimpleStove": SimplifiedStoveAlgorithm,
 # }
-# 
+#
 # ENCODER_DECODER_REGISTRY = {
 #     "Visual": (EncoderNet, BroadcastDecoderNet),
 #     "MLP": (MLP, MLP),
 #     "Slac": (SLACEncoder, SLACDecoder),
 # }
-# 
+#
 # OPTIMIZER_REGISTRY = {
 #     "adam": torch.optim.Adam,
 #     "sgd": torch.optim.SGD,
 #     "ada_grad": torch.optim.Adagrad,
 #     "rms_prop": torch.optim.RMSprop,
 # }
-# 
-# 
+#
+#
 # def setup_experiment(env, cfg) -> AbstractExperiment:
-# 
+#
 #     # model free RL + model-based inference
 #     if cfg.experiment.type == "latent_model_rl":
 #         experiment: TrainingExperiment = LatentTrainingExperiment(
@@ -85,7 +85,7 @@
 #             cfg.train_steps.epochs,
 #             cfg.log.log_frequency,
 #         )
-# 
+#
 #     # separate training functions for simplified debugging and potential pretraining
 #     elif cfg.experiment.type == "model_training":
 #         experiment: TrainingExperiment = ModelTrainingExperiment(
@@ -101,12 +101,12 @@
 #         )
 #     else:
 #         raise KeyError(f"Experiment type {cfg.experiment.type} not known")
-# 
+#
 #     return experiment
-# 
-# 
+#
+#
 # def setup_rl_algorithm(env, cfg):
-# 
+#
 #     if cfg.rl.algorithm == "sac":
 #         if cfg.rl.latent_input:
 #             actor = TanhGaussian(
@@ -166,16 +166,16 @@
 #             latent=latent,
 #             observation=observation,
 #         )
-# 
-# 
+#
+#
 # def setup_model_algorithm(env: Env, cfg) -> AbstractSequenceAlgorithm:
 #     input_dim = env.observation_space.shape[-1]
 #     output_dim = env.observation_space.shape[-1]
 #     action_dim = env.action_space.shape[-1]
-# 
+#
 #     AlgorithmClass = MODEL_ALGORITHM_REGISTRY[cfg.algorithm.name]
 #     Encoder, Decoder = ENCODER_DECODER_REGISTRY[cfg.encoder_decoder.name]
-# 
+#
 #     encoder = Encoder(
 #         input_dim + 1,
 #         cfg.algorithm.parameters.feature_dim,
@@ -189,20 +189,20 @@
 #     reward_decoder = MLP(
 #         cfg.algorithm.parameters.latent_dim, 1, **cfg.reward_decoder.parameters
 #     )
-# 
+#
 #     algorithm = AlgorithmClass(
 #         encoder, decoder, reward_decoder, action_dim, **cfg.algorithm.parameters
 #     )
-# 
+#
 #     if cfg.add_global_belief:
 #         raise NotImplementedError("Belief is not ready")
 #     return algorithm
-# 
-# 
+#
+#
 # def setup_optimizer(cfg):
 #     return OPTIMIZER_REGISTRY[cfg]
-# 
-# 
+#
+#
 # def setup_data(env, cfg):
 #     buffer = TrajectoryReplayBuffer(
 #         cfg.data.buffer_num_trajectories,
@@ -211,9 +211,9 @@
 #         sample_length=cfg.data.sample_length,
 #         device=cfg.device,
 #     )
-# 
+#
 #     if cfg.data.name == "fixed":
 #         return FixedDataStrategy(
 #             env,
 #         )
-# 
+#

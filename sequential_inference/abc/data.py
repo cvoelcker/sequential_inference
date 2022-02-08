@@ -7,19 +7,18 @@ import torch
 from sequential_inference.abc.common import Checkpointable
 
 
-class Env(abc.Abc):
+class Env(abc.ABC):
     pass
-
-
-Env.register(gym.Env)
 
 
 class AbstractDataBuffer(Checkpointable):
     pass
 
+
 class AbstractDataHandler(Checkpointable):
 
     buffer: AbstractDataBuffer
+    env: Env
 
     def __init__(
         self,
@@ -34,8 +33,14 @@ class AbstractDataHandler(Checkpointable):
         pass
 
     @abc.abstractmethod
-    def initialize(self, cfg, preempted: bool, run_dir: str):
+    def initialize(self, cfg, preempted: bool):
         pass
 
     def update(self, log, agent, **kwargs):
         return log
+
+
+class AbstractDataSampler(abc.ABC):
+    @abc.abstractmethod
+    def get_next(self, batch_size: int):
+        pass

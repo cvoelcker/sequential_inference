@@ -1,5 +1,5 @@
 import abc
-from typing import Dict, Optional, OrderedDict, Tuple, Union
+from typing import Callable, Dict, Optional, OrderedDict, Tuple, Union
 
 import torch
 
@@ -75,7 +75,7 @@ class AbstractAlgorithm(Checkpointable, metaclass=abc.ABCMeta):
         actions: Optional[torch.Tensor] = None,
         rewards: Optional[torch.Tensor] = None,
         done: Optional[torch.Tensor] = None,
-    ) -> Tuple[torch.Tensor, Dict]:
+    ) -> Tuple[Tuple[torch.Tensor], Dict]:
         """
         Abstract method to compute a loss function from an observation sequence
 
@@ -115,3 +115,6 @@ class AbstractAlgorithm(Checkpointable, metaclass=abc.ABCMeta):
             torch.optim.Optimizer: the optimizer or a dictionary of optimizers
         """
         raise NotImplementedError("Cannot instantiate Abstract")
+
+    def get_step(self) -> Callable:
+        pass

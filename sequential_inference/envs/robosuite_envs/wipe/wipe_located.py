@@ -260,7 +260,7 @@ class WipeLocated(Wipe):
                     mean_pos_to_things_to_wipe
                 )
                 dist = 5 * mean_distance_to_things_to_wipe
-                reward += -(dist ** 2 + np.log(dist ** 2 + 1e-6))
+                reward += -(dist**2 + np.log(dist**2 + 1e-6))
                 # reward += self.distance_multiplier * (
                 #         1 - np.tanh(self.distance_th_multiplier * mean_distance_to_things_to_wipe))
 

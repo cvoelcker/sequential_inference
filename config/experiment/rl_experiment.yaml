@@ -1,0 +1,11 @@
+# @package experiment
+
+defaults:
+  - _self_
+  - rl_algorithm: 1d_obs_sac
+
+_target_: sequential_inference.experiments.base.RLTrainingExperiment
+
+epochs: 1000
+epoch_steps: 1000
+batch_size: 128

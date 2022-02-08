@@ -1,11 +1,12 @@
 import copy
-from typing import Optional
+from typing import Dict, Optional, Tuple
 
 import math
 
 import numpy as np
 import torch
 from torch import nn
+from torch.optim import Adam
 
 from sequential_inference.abc.rl import AbstractAgent, AbstractRLAlgorithm
 from sequential_inference.algorithms.rl.agents import PolicyNetworkAgent
@@ -32,33 +33,48 @@ class SACAlgorithm(AbstractRLAlgorithm):
         self,
         actor: nn.Module,
         critic: nn.Module,
-        action_dim: int,
+        actor_lr: float,
+        critic_lr: float,
+        alpha_lr: float,
         alpha: float,
         gamma: float,
         target_gamma: float,
+        target_entropy: float,
         update_alpha: bool = False,
         latent: bool = False,
         observation: bool = True,
     ):
         super().__init__()
+        self.actor = actor
         self.critic = critic
         self.q_target = copy.deepcopy(self.critic)
-        self.actor = actor
+        self.q_target.requires_grad_ = False
         self.alpha = AlphaModule(alpha)
+
+        self.actor_lr = actor_lr
+        self.critic_lr = critic_lr
+        self.alpha_lr = alpha_lr
 
         self.update_alpha = update_alpha
         self.gamma = gamma
-        self.target_entropy = -action_dim
+        self.target_entropy = target_entropy
 
         self.target_gamma = target_gamma
 
         self.latent = latent
         self.observation = observation
 
+        self.actor_optimizer = Adam(self.actor.parameters(), lr=self.actor_lr)
+        self.critic_optimizer = Adam(self.critic.parameters(), lr=self.critic_lr)
+        self.alpha_optimizer = Adam(self.alpha.parameters(), lr=self.alpha_lr)
+
         self.register_module("q", self.critic)
         self.register_module("qt", self.q_target)
         self.register_module("policy", self.actor)
         self.register_module("alpha", self.alpha)
+        self.register_module("actor_optimizer", self.actor_optimizer)
+        self.register_module("critic_optimizer", self.critic_optimizer)
+        self.register_module("alpha_optimizer", self.alpha_optimizer)
 
     def compute_loss(
         self,
@@ -66,7 +82,7 @@ class SACAlgorithm(AbstractRLAlgorithm):
         actions: Optional[torch.Tensor] = None,
         rewards: Optional[torch.Tensor] = None,
         done: Optional[torch.Tensor] = None,
-    ) -> torch.Tensor:
+    ) -> Tuple[Tuple[torch.Tensor], Dict]:
         assert actions is not None
         assert rewards is not None
         assert done is not None
@@ -156,3 +172,31 @@ class SACAlgorithm(AbstractRLAlgorithm):
 
     def get_agent(self) -> AbstractAgent:
         return PolicyNetworkAgent(self.actor, self.latent, self.observation)
+
+    def get_step(self):
+        def _step(obs, actions, rewards, done):
+            update_stats = {}
+
+            (q_loss, actor_loss, alpha_loss), stats = self.compute_loss(
+                obs, actions, rewards, done
+            )
+
+            self.actor_optimizer.zero_grad()
+            actor_loss.backward(retain_graph=True)
+            actor_norm = self.actor_optimizer.step()
+            update_stats["actor_norm"] = actor_norm
+
+            self.critic_optimizer.zero_grad()
+            q_loss.backward(retain_graph=True)
+            critic_norm = self.critic_optimizer.step()
+            update_stats["critic_norm"] = critic_norm
+
+            if self.update_alpha:
+                self.alpha_optimizer.zero_grad()
+                alpha_loss.backward()
+                alpha_norm = self.alpha_optimizer.step()
+                update_stats["alpha_norm"] = alpha_norm
+
+            return {**stats, **update_stats}
+
+        return _step

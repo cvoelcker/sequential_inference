@@ -1,0 +1,15 @@
+defaults:
+  - _self_
+  - env: gym
+  - data: online
+  - experiment: rl_experiment
+
+logging:
+  _target_: sequential_inference.log.logger.build_loggers
+  test: some
+  try: not
+  train: all
+
+cluster: local
+
+device: cpu

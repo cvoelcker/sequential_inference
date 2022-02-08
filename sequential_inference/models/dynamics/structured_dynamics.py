@@ -99,14 +99,9 @@ class Dynamics(nn.Module):
             self.out[i].append(nn.Linear(cl + cl, 2 * cl))
 
         # Attention mask
-        diag_mask = (
-            1
-            - torch.eye(
-                self.num_obj,
-            )
-            .unsqueeze(2)
-            .unsqueeze(0)
-        )
+        diag_mask = 1 - torch.eye(self.num_obj,).unsqueeze(
+            2
+        ).unsqueeze(0)
         self.register_buffer("diag_mask", diag_mask)
 
         if self.c.debug_xavier:

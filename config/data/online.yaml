@@ -1,0 +1,8 @@
+# @package data
+
+name: online
+init_data_source: random
+
+buffer_num_trajectories: 10000
+buffer_trajectory_length: 200
+sample_length: 16

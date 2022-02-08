@@ -3,6 +3,8 @@ import numpy as np
 import os
 from abc import ABC, abstractmethod
 
+from sequential_inference.abc.data import Env
+
 # from baselines.common.tile_images import tile_images
 
 
@@ -28,7 +30,7 @@ class NotSteppingError(Exception):
         Exception.__init__(self, msg)
 
 
-class VecEnv(ABC):
+class VecEnv(Env):
     """
     An abstract asynchronous, vectorized environment.
     Used to batch data from multiple copies of an environment, so that

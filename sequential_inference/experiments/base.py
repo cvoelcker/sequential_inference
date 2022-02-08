@@ -1,12 +1,5 @@
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 import abc
-from sequential_inference.abc.data import Env
-from sequential_inference.setup.factory import (
-    setup_data,
-    setup_rl_algorithm,
-    setup_model_algorithm,
-    setup_optimizer,
-)
 
 from tqdm import tqdm
 import torch
@@ -16,7 +9,7 @@ from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
 from sequential_inference.abc.rl import AbstractRLAlgorithm
 
 
-class TrainingExperiment(AbstractExperiment):
+class AbstractTrainingExperiment(AbstractExperiment):
 
     is_rl: bool = False
     is_model: bool = False
@@ -61,7 +54,7 @@ class TrainingExperiment(AbstractExperiment):
         pass
 
 
-class RLTrainingExperiment(AbstractRLExperiment, TrainingExperiment):
+class RLTrainingExperiment(AbstractRLExperiment, AbstractTrainingExperiment):
 
     rl_algorithm: AbstractRLAlgorithm
 
@@ -93,7 +86,7 @@ class RLTrainingExperiment(AbstractRLExperiment, TrainingExperiment):
         return stats
 
 
-class ModelTrainingExperiment(TrainingExperiment):
+class ModelTrainingExperiment(AbstractTrainingExperiment):
 
     model_algorithm: AbstractSequenceAlgorithm
 
@@ -124,7 +117,7 @@ class ModelTrainingExperiment(TrainingExperiment):
         return stats
 
 
-class ModelBasedRLTrainingExperiment(TrainingExperiment, abc.ABC):
+class ModelBasedRLTrainingExperiment(AbstractTrainingExperiment, abc.ABC):
 
     model_algorithm: AbstractSequenceAlgorithm
     rl_algorithm: AbstractRLAlgorithm

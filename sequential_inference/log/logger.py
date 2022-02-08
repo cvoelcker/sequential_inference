@@ -3,7 +3,7 @@ import os
 import pickle
 from collections import defaultdict
 import torch
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard.writer import SummaryWriter
 
 from sequential_inference.abc.experiment import AbstractExperiment
 from sequential_inference.abc.util import AbstractLogger
@@ -58,14 +58,14 @@ class FileLogger(AbstractLogger):
 class TorchTensorboardHandler(AbstractLogger):
     def __init__(
         self,
-        logdir="tb_logs",
-        namedir="default",
+        log_dir="tb_logs",
+        name_dir="default",
         keys=("step", "epoch"),
         log_name_list=None,
         reset_logdir=True,
     ):
         self.keys = keys
-        full_path = os.path.join(os.path.abspath(logdir), namedir)
+        full_path = os.path.join(os.path.abspath(log_dir), name_dir)
         self.logger = SummaryWriter(full_path, flush_secs=10)
         print(f"Logging to {full_path}")
         if reset_logdir:
@@ -111,22 +111,29 @@ class TorchTensorboardHandler(AbstractLogger):
         else:
             self.step += 1
         self.logger.flush()
-        self.logger.close()
 
     def reset(self):
         self.step = 0
 
+    def close(self):
+        self.logger.flush()
+        self.logger.close()
+
 
 class CsvLogger(AbstractLogger):
-    def __init__(self, save_dir, log_name, keys=("log",), overwrite=False):
+    def __init__(
+        self, log_dir="raw_logs", name="default", keys=("log",), overwrite=False
+    ):
         self.scalars_names = []
         self.scalars_names_is_full = False
-        if not os.path.exists(save_dir):
-            os.mkdir(save_dir)
-        self.save_dir = os.path.join(save_dir, "raw_logs")
+
+        self.save_dir = log_dir
+
+        if not os.path.exists(log_dir):
+            os.mkdir(log_dir)
         if not os.path.exists(self.save_dir):
             os.mkdir(self.save_dir)
-        self.file_path = os.path.join(self.save_dir, f"{log_name}.csv")
+        self.file_path = os.path.join(self.save_dir, f"{name}.csv")
         if overwrite:
             self.file = open(self.file_path, "w", buffering=1)
         else:

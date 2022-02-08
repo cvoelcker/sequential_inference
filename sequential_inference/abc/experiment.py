@@ -4,8 +4,8 @@ import abc
 
 from omegaconf import omegaconf
 from sequential_inference.abc.data import AbstractDataHandler
-from sequential_inference.abc.rl import AbstractRLAlgorithm
-from typing import Dict, Optional
+from sequential_inference.abc.rl import AbstractAgent, AbstractRLAlgorithm
+from typing import Any, Dict, Optional
 
 import torch
 
@@ -24,7 +24,7 @@ class AbstractExperiment(Checkpointable, metaclass=abc.ABCMeta):
         self.data: Optional[AbstractDataHandler] = None
 
     @abc.abstractmethod
-    def run(self, status: Dict[str, str]):
+    def run(self, status: Dict[str, str]) -> None:
         """Run the experiment
 
         Args:
@@ -32,10 +32,10 @@ class AbstractExperiment(Checkpointable, metaclass=abc.ABCMeta):
         """
         pass
 
-    def set_data_handler(self, data: AbstractDataHandler):
+    def set_data_handler(self, data: AbstractDataHandler) -> None:
         self.data = data
 
-    def initialize(self, cfg: omegaconf.DictConfig, preempted: bool, run_dir: str):
+    def initialize(self, cfg: omegaconf.DictConfig, preempted: bool) -> Dict[str, Any]:
         """Initialize the experiment, either collecting new data and using the default models, or loading a checkpointed model
 
         Args:
@@ -45,9 +45,9 @@ class AbstractExperiment(Checkpointable, metaclass=abc.ABCMeta):
         """
         experiment_status = {}
         if preempted:
-            with open(os.path.join(run_dir, "status"), "rb") as f:
+            with open(os.path.join("chp", "status"), "rb") as f:
                 experiment_status["status"] = f.readlines().join("")
-            checkpoints = os.path.join(run_dir, "checkpoints")
+            checkpoints = os.path.join("chp", "checkpoints")
             list_dir = os.listdir(checkpoints)
             experiment_status["checkpoint_number"] = len(list_dir)
             checkpoint_location = sorted(list_dir)[-1]
@@ -55,8 +55,8 @@ class AbstractExperiment(Checkpointable, metaclass=abc.ABCMeta):
         else:
             experiment_status["status"] = "new"
             experiment_status["checkpoint_number"] = 0
-        
-        self.data.initialize(cfg, preempted, run_dir)
+
+        self.data.initialize(cfg, preempted)
 
         return experiment_status
 
@@ -93,7 +93,5 @@ class AbstractRLExperiment(AbstractExperiment, metaclass=abc.ABCMeta):
 
     rl_algorithm: AbstractRLAlgorithm
 
-    def get_agent(self):
-        return self.rl_algorithm.get_policy()
-
-
+    def get_agent(self) -> AbstractAgent:
+        return self.rl_algorithm.get_agent()

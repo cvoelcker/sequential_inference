@@ -41,3 +41,7 @@ def gather_trajectory_data(
             [done, torch.ones(trajectory_length - done_len, *done.shape[1:])], 0
         )
         buffer.insert({"obs": obs, "act": act, "rew": rew, "done": done})
+
+
+def load_offline_data():
+    pass

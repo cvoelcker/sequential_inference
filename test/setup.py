@@ -12,11 +12,22 @@ from sequential_inference.setup.vector import vector_preface
 from sequential_inference.envs.env import setup_environment
 
 
-@hydra.main(config_path="../config", config_name="main")
-def main(cfg):
+@hydra.main(config_path="../config", config_name="test_init")
+def test_init(cfg):
     preempted = vector_preface(cfg)
-
     print(OmegaConf.to_yaml(cfg))
+    print(cfg.chp_dir)
+    print(cfg.logging.tensorboard.log_dir)
+
+    env: Env = setup_environment(cfg)
+    data: AbstractDataHandler = setup_data(cfg, env)
+    experiment: AbstractExperiment = hydra.utils.instantiate(cfg.experiment)
+    logging: List[AbstractLogger] = hydra.utils.instantiate(cfg.logging)
+
+
+@hydra.main(config_path="../config", config_name="test_initialize")
+def test_initialize(cfg):
+    preempted = vector_preface(cfg)
 
     env: Env = setup_environment(cfg)
     data: AbstractDataHandler = setup_data(cfg, env)
@@ -33,4 +44,4 @@ def main(cfg):
 
 
 if __name__ == "__main__":
-    main()
+    test_init()

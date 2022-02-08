@@ -212,9 +212,9 @@ class SawyerReachingEnv(mujoco_env.MujocoEnv):
         dist = 5 * np.linalg.norm(ee_xyz - goal_xyz)
 
         offset = -(
-            -(self.truncation_dist ** 2 + math.log10(self.truncation_dist ** 2 + 1e-5))
+            -(self.truncation_dist**2 + math.log10(self.truncation_dist**2 + 1e-5))
         )
-        reward = -(dist ** 2 + math.log10(dist ** 2 + 1e-5)) + offset
+        reward = -(dist**2 + math.log10(dist**2 + 1e-5)) + offset
 
         if dist < self.truncation_dist:
             sparse_reward = reward + self.sparse_margin  # create a gap of 1

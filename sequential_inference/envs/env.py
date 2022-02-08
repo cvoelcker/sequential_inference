@@ -54,10 +54,6 @@ def setup_environment(cfg):
     n_envs = cfg.env.n_envs
     time_limit = cfg.env.time_limit
     is_multi_env = cfg.env.is_multi_env
-    normalize_rew = cfg.algorithm.normalize_rew
-    ret_rms = cfg.algorithm.ret_rms
     suite = cfg.env.suite
 
-    return make_vec_env(
-        n_envs, env_name, time_limit, is_multi_env, normalize_rew, ret_rms, suite
-    )
+    return make_vec_env(n_envs, env_name, time_limit, is_multi_env, False, False, suite)

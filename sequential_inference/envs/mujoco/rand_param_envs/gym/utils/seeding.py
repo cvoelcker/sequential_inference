@@ -107,6 +107,6 @@ def _int_list_from_bigint(bigint):
 
     ints = []
     while bigint > 0:
-        bigint, mod = divmod(bigint, 2 ** 32)
+        bigint, mod = divmod(bigint, 2**32)
         ints.append(mod)
     return ints

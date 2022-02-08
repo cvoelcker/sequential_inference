@@ -3,9 +3,7 @@ from typing import Dict, Iterator
 
 import torch
 from torch.utils.data import Dataset
-from sequential_inference.abc.data import AbstractDataBuffer
-
-from sequential_inference.abc.util import AbstractDataSampler
+from sequential_inference.abc.data import AbstractDataBuffer, AbstractDataSampler
 
 USE_GPU = torch.cuda.is_available()
 DEVICE = "cuda" if USE_GPU else "cpu"

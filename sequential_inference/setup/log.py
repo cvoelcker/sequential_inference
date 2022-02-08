@@ -1,6 +1,6 @@
-from sequential_inference.logging import *
 import os
-from sequential_inference.logging.logger import CsvLogger, TorchTensorboardHandler
+
+from sequential_inference.log.logger import CsvLogger, TorchTensorboardHandler
 
 
 def setup_logging(cfg, run_dir: str, preempted: bool = False):
