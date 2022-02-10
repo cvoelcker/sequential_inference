@@ -6,6 +6,7 @@ Adapted from every repo ever ;)
 @author Claas
 """
 
+from typing import Sequence, Tuple, Union
 from sequential_inference.models.base.dists import TanhNormal
 import torch
 from torch import nn
@@ -47,8 +48,23 @@ def create_conv_layers(
     return nn.Sequential(*layers)
 
 
-def create_mlp(input_size, output_size, layer_sizes):
+def create_mlp(
+    input_size: Union[Sequence[int], int],
+    output_size: Union[Sequence[int], int],
+    layer_sizes: Sequence[int],
+):
     layers = []
+
+    if isinstance(input_size, Sequence):
+        assert len(input_size) == 1, "Input shape must be a single dimension"
+        input_size = input_size[0]
+    else:
+        input_size = input_size
+    if isinstance(output_size, Sequence):
+        assert len(output_size) == 1, "Output shape must be a single dimension"
+        output_size = output_size[0]
+    else:
+        output_size = output_size
 
     for layer in layer_sizes:
         layers.append(nn.Linear(input_size, layer))
@@ -121,7 +137,7 @@ class EncoderNet(nn.Module):
         )
 
     def forward(self, x):
-        coord_map = self.coord_map_const.repeat(x.shape[0], 1, 1, 1)
+        coord_map = self.coord_map_const.repeat(x.shape[0], 1, 1, 1)  # type: ignore
         inp = torch.cat((x, coord_map), 1)
         x = self.network(inp)
         x = x.view(-1, self.conv_size)
@@ -164,7 +180,7 @@ class BroadcastDecoderNet(nn.Module):
         # produces a tiled representation of z
         z_scaled = x.unsqueeze(-1).unsqueeze(-1)
         z_tiled = z_scaled.repeat(1, 1, self.img_shape[0], self.img_shape[1])
-        coord_map = self.coord_map_const.repeat(x.shape[0], 1, 1, 1)
+        coord_map = self.coord_map_const.repeat(x.shape[0], 1, 1, 1)  # type: ignore
         inp = torch.cat((z_tiled, coord_map), 1)
         result = self.network(inp)
         return result
@@ -205,7 +221,7 @@ class UNet(nn.Module):
     def forward(self, x):
         intermediates = []
         cur = x
-        for down_conv in self.down_convs[:-1]:
+        for down_conv in self.down_convs[:-1]:  # type: ignore
             cur = down_conv(cur)
             intermediates.append(cur)
             cur = nn.MaxPool2d(2)(cur)
@@ -286,7 +302,7 @@ class OffsetGaussian(nn.Module):
     def __init__(
         self, input_dim, output_dim, hidden_units=[256, 256], std=None, leaky_slope=0.2
     ):
-        super(Gaussian, self).__init__()
+        super().__init__()
         self.net = create_mlp(
             input_dim,
             2 * output_dim if std is None else output_dim,
@@ -362,7 +378,7 @@ class SLACDecoder(nn.Module):
 
 class SLACEncoder(nn.Module):
     def __init__(self, input_dim=3, output_dim=256, leaky_slope=0.2):
-        super(self).__init__()
+        super().__init__()
 
         if type(input_dim) == torch.Size:
             input_dim = input_dim[0]

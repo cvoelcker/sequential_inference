@@ -6,3 +6,5 @@ init_data_source: random
 buffer_num_trajectories: 10000
 buffer_trajectory_length: 200
 sample_length: 16
+
+n_init: 10000

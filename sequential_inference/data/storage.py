@@ -2,14 +2,78 @@ import itertools
 from typing import Dict, Iterator
 
 import torch
-from torch.utils.data import Dataset
 from sequential_inference.abc.data import AbstractDataBuffer, AbstractDataSampler
 
-USE_GPU = torch.cuda.is_available()
-DEVICE = "cuda" if USE_GPU else "cpu"
+
+class DataBuffer(AbstractDataBuffer):
+    def __init__(
+        self,
+        capacity: int,
+        env,
+        sample_length=1,
+        device="cpu",
+    ):
+        self.device = device
+
+        obs_space = env.observation_space
+        obs_type = env.reset().dtype
+        act_space = env.action_space
+
+        self.obs_shape = obs_space.shape
+        self.act_shape = act_space.shape
+
+        self.s = torch.zeros((capacity, *obs_space.shape), dtype=obs_type).to(
+            self.device
+        )
+        self.a = torch.zeros((capacity, *act_space.shape), dtype=torch.float).to(
+            self.device
+        )
+        self.r = torch.zeros((capacity, 1)).to(self.device)
+        self.d = torch.zeros((capacity, 1)).to(self.device)
+        self.t = torch.zeros((capacity, 1)).to(self.device)
+
+        self.sample_length = sample_length
+        self.capacity = capacity
+        self.length = 0
+        self.fill_counter = 0
+        self.full = False
+
+    def insert(self, trajectory):
+        traj_len = trajectory["obs"].shape[0]
+
+        if self.fill_counter + traj_len > self.capacity:
+            self.full = True
+            self.length = self.fill_counter
+            self.fill_counter = 0
+        else:
+            self.length = self.length + traj_len
+
+        self.s[self.fill_counter : self.fill_counter + traj_len] = (
+            trajectory["obs"].to(self.device).detach()
+        )
+        self.a[self.fill_counter : self.fill_counter + traj_len] = (
+            trajectory["act"].to(self.device).detach()
+        )
+        self.r[self.fill_counter : self.fill_counter + traj_len] = (
+            trajectory["rew"].to(self.device).detach()
+        )
+        self.d[self.fill_counter : self.fill_counter + traj_len] = (
+            trajectory["done"].to(self.device).detach()
+        )
+
+    def __getitem__(self, i):
+        s = self.s[i : i + self.sample_length].float().squeeze(0)
+        a = self.a[i : i + self.sample_length].float().squeeze(0)
+        r = self.r[i : i + self.sample_length].float().squeeze(0)
+        d = self.d[i : i + self.sample_length].float().squeeze(0)
+        s_n = self.s[i + 1 : i + 1 + self.sample_length].float().squeeze(0)
+        return dict(obs=s, act=a, rew=r, next_obs=s_n, done=d)
+
+    def __len__(self):
+        return min(self.length - self.sample_length, 0)
 
 
-class TrajectoryReplayBuffer(AbstractDataBuffer, Dataset):
+class TrajectoryReplayBuffer(AbstractDataBuffer):
     def __init__(
         self,
         num_trajectories,
@@ -18,6 +82,8 @@ class TrajectoryReplayBuffer(AbstractDataBuffer, Dataset):
         sample_length=1,
         device="cpu",
     ):
+        self.device = device
+
         obs_space = env.observation_space
         obs_type = env.reset().dtype
         act_space = env.action_space
@@ -27,12 +93,13 @@ class TrajectoryReplayBuffer(AbstractDataBuffer, Dataset):
 
         self.s = torch.zeros(
             (num_trajectories, trajectory_length, *obs_space.shape), dtype=obs_type
-        ).to(DEVICE)
+        ).to(self.device)
         self.a = torch.zeros(
             (num_trajectories, trajectory_length, *act_space.shape), dtype=torch.float
-        ).to(DEVICE)
-        self.r = torch.zeros((num_trajectories, trajectory_length, 1)).to(DEVICE)
-        self.d = torch.zeros((num_trajectories, trajectory_length, 1)).to(DEVICE)
+        ).to(self.device)
+        self.r = torch.zeros((num_trajectories, trajectory_length, 1)).to(self.device)
+        self.d = torch.zeros((num_trajectories, trajectory_length, 1)).to(self.device)
+        self.t = torch.zeros((num_trajectories, trajectory_length, 1)).to(self.device)
 
         self.trajectory_length = trajectory_length
         self.sample_length = sample_length
@@ -41,10 +108,11 @@ class TrajectoryReplayBuffer(AbstractDataBuffer, Dataset):
         self.full = False
 
     def insert(self, trajectory):
-        self.s[self.fill_counter] = trajectory["obs"].to(DEVICE).detach()
-        self.a[self.fill_counter] = trajectory["act"].to(DEVICE).detach()
-        self.r[self.fill_counter] = trajectory["rew"].to(DEVICE).detach()
-        self.d[self.fill_counter] = trajectory["done"].to(DEVICE).detach().unsqueeze(-1)
+        self.s[self.fill_counter] = trajectory["obs"].to(self.device).detach()
+        self.a[self.fill_counter] = trajectory["act"].to(self.device).detach()
+        self.r[self.fill_counter] = trajectory["rew"].to(self.device).detach()
+        self.d[self.fill_counter] = trajectory["done"].to(self.device).detach()
+        self.t[self.fill_counter] = trajectory["task"].to(self.device).detach()
 
         self.length = (
             self.capacity * (self.trajectory_length - self.sample_length - 1)
@@ -76,13 +144,13 @@ class BatchDataSampler(AbstractDataSampler):
     To provide flexible batch sizes with minimal overhead, it holds a set of iterators for different batch sizes as "views" on the data.
     """
 
-    def __init__(self, buffer: Dataset):
+    def __init__(self, buffer: AbstractDataBuffer):
         self.buffer = buffer
 
         self.iterators: Dict[int, Iterator[Dict[str, torch.Tensor]]] = {}
 
     def _make_iterator(self, batch_size: int):
-        _dataloader = torch.utils.data.DataLoader(
+        _dataloader = torch.utils.data.DataLoader(  # type: ignore
             self.buffer, batch_size=batch_size, drop_last=True, shuffle=True
         )
         self.iterators[batch_size] = itertools.cycle(iter(_dataloader))

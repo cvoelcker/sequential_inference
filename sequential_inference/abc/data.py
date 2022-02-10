@@ -1,21 +1,17 @@
 import abc
 from typing import Dict
 
-import gym
 import torch
+from torch.utils.data import Dataset
 
-from sequential_inference.abc.common import Checkpointable
+from sequential_inference.abc.common import Checkpointable, Env, Saveable
 
 
-class Env(abc.ABC):
+class AbstractDataBuffer(Dataset, Checkpointable):
     pass
 
 
-class AbstractDataBuffer(Checkpointable):
-    pass
-
-
-class AbstractDataHandler(Checkpointable):
+class AbstractDataHandler(Saveable):
 
     buffer: AbstractDataBuffer
     env: Env

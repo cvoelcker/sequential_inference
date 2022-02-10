@@ -4,8 +4,8 @@ from typing import Dict, Iterator, List, Tuple
 from tqdm import tqdm
 import torch
 import numpy as np
+from sequential_inference.abc.common import Env
 
-from sequential_inference.envs.vec_env.vec_env import VecEnv
 from sequential_inference.abc.rl import AbstractAgent
 from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
 
@@ -57,9 +57,8 @@ def rollout_with_policy(
 
 
 class Buffer:
-    def __init__(self, num_envs: int, return_latent: bool = False):
+    def __init__(self, num_envs: int):
         self.num_envs = num_envs
-        self.return_latent = return_latent
         self.obs: List[torch.Tensor] = []
         self.act: List[torch.Tensor] = []
         self.rew: List[torch.Tensor] = []
@@ -74,14 +73,12 @@ class Buffer:
         rew: torch.Tensor,
         done: torch.Tensor,
         task: torch.Tensor,
-        ltn: torch.Tensor = None,
     ):
         self.obs.append(obs)
         self.act.append(act)
         self.rew.append(rew)
         self.done.append(done)
         self.task.append(task)
-        self.ltn.append(ltn)
 
     def empty(self) -> Iterator[Tuple[torch.Tensor, ...]]:
         o = torch.stack(self.obs, 1)
@@ -95,79 +92,50 @@ class Buffer:
         self.done = []
         self.task = []
         self.ltn = []
-        if self.return_latent:
-            l = torch.Tensor(self.ltn)
-            for i in range(self.num_envs):
-                yield (o[i], a[i], r[i], d[i], t[i], l[i])
         for i in range(self.num_envs):
             yield (o[i], a[i], r[i], d[i], t[i])
 
 
-def run_agent_in_environment(
-    environment: VecEnv,
+def run_agent_in_vec_environment(
+    environment: Env,
     policy: AbstractAgent,
     steps: int,
     explore: bool = False,
-    randomize_tasks: bool = True,
-    return_contexts: bool = False,
 ) -> Tuple[List[torch.Tensor], ...]:
     actions = []
     observations = []
     rewards = []
     tasks = []
     dones = []
-    latents = []
 
     steps = steps // environment.num_envs
 
     buffer = Buffer(environment.num_envs)
 
-    if randomize_tasks:
-        last_obs = environment.reset()
-    else:
-        last_obs = environment.reset_mdp()
+    last_obs = environment.reset()
     reward = None
 
     policy.reset()
     for _ in tqdm(range(steps)):
         action = policy.act(last_obs, reward, explore=explore)
         next_obs, reward, done, info = environment.step(action)
-        if return_contexts:
-            latent = policy.state
-        else:
-            latent = None
-        buffer.add(last_obs, action, reward, done, info["task"], latent)
+        buffer.add(last_obs, action, reward, done, info["task"])
 
         last_obs = next_obs
 
         if torch.all(done):
             # move buffer entries to return lists
             policy.reset()
-            if return_contexts:
-                for obs, act, rew, done, task, ltn in buffer.empty():
-                    observations.append(obs)
-                    actions.append(act)
-                    rewards.append(rew)
-                    dones.append(done)
-                    tasks.append(task)
-                    latents.append(ltn)
-            else:
-                for obs, act, rew, done, task in buffer.empty():
-                    observations.append(obs)
-                    actions.append(act)
-                    rewards.append(rew)
-                    dones.append(done)
-                    tasks.append(task)
+            for obs, act, rew, done, task in buffer.empty():
+                observations.append(obs)
+                actions.append(act)
+                rewards.append(rew)
+                dones.append(done)
+                tasks.append(task)
 
-            if randomize_tasks:
-                last_obs = environment.reset()
-            else:
-                last_obs = environment.reset_mdp()
+            last_obs = environment.reset()
 
-    if return_contexts:
-        return observations, actions, rewards, tasks, dones, latents
-    else:
-        return observations, actions, rewards, tasks, dones
+    return observations, actions, rewards, tasks, dones
 
 
 def join_state_with_array(state: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
@@ -184,5 +152,5 @@ def join_state_with_array(state: torch.Tensor, action: torch.Tensor) -> torch.Te
         return torch.cat((state, action), -1)
 
 
-def load_agent():
+def load_agent(path: str):
     raise NotImplementedError("Agent loading not yet available")

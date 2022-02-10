@@ -4,12 +4,33 @@ defaults:
   - data: online
   - experiment: rl_experiment
 
+env:
+  obs_dim: 0
+  action_dim: 0
+
 logging:
-  _target_: sequential_inference.log.logger.build_loggers
-  test: some
-  try: not
-  train: all
+  _target_: sequential_inference.util.setup.hydra_make_list
+  tensorboard:
+    _target_: sequential_inference.log.logger.TorchTensorboardHandler
+    log_dir: "${chp_dir}/tb_logs"
+    name_dir: "default"
+    keys: [step, epoch]
+  file_step:
+    _target_: sequential_inference.log.logger.CsvLogger
+    log_dir: "${chp_dir}/raw_logs"
+    name: "step"
+    keys: [step]
+  file_epoch:
+    _target_: sequential_inference.log.logger.CsvLogger
+    log_dir: "${chp_dir}/raw_logs"
+    name: "epoch"
+    keys: [epoch]
+  file_eval:
+    _target_: sequential_inference.log.logger.CsvLogger
+    log_dir: "${chp_dir}/raw_logs"
+    name: "eval"
+    keys: [eval]
 
 cluster: local
-
+chp_dir: .
 device: cpu

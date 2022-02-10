@@ -1,7 +1,6 @@
-from sequential_inference.envs.vec_env.vec_torch import TorchBox
 from typing import Optional
+from gym import Space
 
-import numpy as np
 import torch
 
 from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
@@ -9,7 +8,7 @@ from sequential_inference.abc.rl import AbstractAgent
 
 
 class RandomAgent(AbstractAgent):
-    def __init__(self, action_space: TorchBox):
+    def __init__(self, action_space: Space):
         self.action_space = action_space
 
     def act(
@@ -19,7 +18,10 @@ class RandomAgent(AbstractAgent):
         context: Optional[torch.Tensor] = None,
         explore: bool = False,
     ) -> torch.Tensor:
-        return self.action_space.sample()
+        action = self.action_space.sample()
+        if len(action.shape) == 1:
+            return torch.from_numpy(action).unsqueeze(0)
+        return torch.from_numpy(action)
 
 
 class DummyAgent(AbstractAgent):
@@ -61,6 +63,8 @@ class PolicyNetworkAgent(AbstractAgent):
             inp = [observation]
         elif self.latent and self.observation:
             inp = [observation, context]
+        else:
+            raise ValueError("Policy needs to depend on something ^^")
         action_dist = self.policy(*inp)
         if explore:
             action = action_dist.rsample()[0]
@@ -97,6 +101,7 @@ class InferencePolicyAgent(AbstractAgent):
         explore: bool = False,
     ) -> torch.Tensor:
         # TODO: check if inference handles reward=None gracefully
+        # TODO: check how initial_state = None is handled
         self.state = self.model.infer_single_step(
             self.state, observation, self.last_action, reward
         )

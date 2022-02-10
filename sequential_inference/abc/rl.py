@@ -29,6 +29,10 @@ class AbstractAgent(abc.ABC):
         """
         pass
 
+    def get_state(self):
+        """Returns a state dict for saving the agent state"""
+        return {}
+
     def reset(self):
         """Resets the internal agent on environment reset"""
         pass
@@ -48,10 +52,10 @@ class AbstractExplorationAgent(AbstractAgent, metaclass=abc.ABCMeta):
     def exploration_policy(
         self,
         observation: torch.Tensor,
-        action: np.ndarray,
-        reward: torch.Tensor,
-        context: torch.Tensor,
-    ) -> np.ndarray:
+        action: torch.Tensor,
+        reward: Optional[torch.Tensor],
+        context: Optional[torch.Tensor],
+    ) -> torch.Tensor:
         pass
 
     def act(
@@ -60,7 +64,7 @@ class AbstractExplorationAgent(AbstractAgent, metaclass=abc.ABCMeta):
         reward: Optional[torch.Tensor] = None,
         context: Optional[torch.Tensor] = None,
         explore: bool = False,
-    ) -> np.ndarray:
+    ) -> torch.Tensor:
         proposed_action = self.agent.act(observation, reward, context, explore)
         if explore:
             return self.exploration_policy(

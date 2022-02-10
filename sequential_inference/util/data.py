@@ -1,25 +1,53 @@
 import torch
 
+from sequential_inference.abc.common import Env
+from sequential_inference.abc.data import AbstractDataBuffer
+
 from sequential_inference.abc.rl import AbstractAgent
-from sequential_inference.util.rl_util import run_agent_in_environment
+from sequential_inference.util.rl_util import run_agent_in_vec_environment
 from sequential_inference.data.storage import TrajectoryReplayBuffer
-from sequential_inference.envs.vec_env.vec_env import VecEnv
+
+
+def gather_data(
+    env: Env,
+    agent: AbstractAgent,
+    buffer: AbstractDataBuffer,
+    steps: int,
+    explore: bool = True,
+) -> None:
+    if isinstance(buffer, TrajectoryReplayBuffer):
+        gather_trajectory_data(env, agent, buffer, steps, explore)
+    elif isinstance(buffer, AbstractDataBuffer):
+        gather_sequential_data(env, agent, buffer, steps, explore)
+    else:
+        raise NotImplementedError(
+            f"Data gathering not implemented for this buffer {type(buffer)}"
+        )
+
+
+def gather_sequential_data(
+    env: Env,
+    agent: AbstractAgent,
+    buffer: AbstractDataBuffer,
+    steps: int,
+    explore: bool = True,
+) -> None:
+    pass
 
 
 def gather_trajectory_data(
-    env: VecEnv,
+    env: Env,
     agent: AbstractAgent,
     buffer: TrajectoryReplayBuffer,
     steps: int,
     explore: bool = True,
-    randomize_tasks: bool = True,
 ) -> None:
 
     trajectory_length = buffer.trajectory_length
 
     # TODO think about saving task in replay buffer
-    observations, actions, rewards, _, dones = run_agent_in_environment(
-        env, agent, steps, explore, randomize_tasks
+    observations, actions, rewards, _, dones = run_agent_in_vec_environment(
+        env, agent, steps, explore
     )
     for obs, act, rew, done in zip(observations, actions, rewards, dones):
         obs_len = obs.shape[0]

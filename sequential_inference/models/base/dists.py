@@ -25,7 +25,7 @@ class TanhNormal:
             * (
                 math.log(2.0)
                 - norm_samples
-                - nn.functional.softplus(-2.0 * norm_samples)
+                - nn.functional.softplus(-2.0 * norm_samples)  # type: ignore
             ),
             -1,
             keepdim=True,

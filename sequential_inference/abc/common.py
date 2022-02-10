@@ -1,7 +1,57 @@
 import abc
-from typing import Callable, Dict, Optional, OrderedDict, Tuple, Union
+import pickle
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    OrderedDict,
+    Tuple,
+    TypeVar,
+    Union,
+)
+from gym import Space
 
 import torch
+
+
+class Env(abc.ABC):
+    num_envs: int
+    action_space: Space
+    observation_space: Space
+
+    @abc.abstractmethod
+    def step(
+        self, action: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict[str, torch.Tensor]]:
+        pass
+
+    @abc.abstractmethod
+    def reset(self) -> torch.Tensor:
+        pass
+
+    @abc.abstractmethod
+    def render(self, mode: str):
+        pass
+
+    @abc.abstractmethod
+    def reset_task(self, task_id: Union[int, List[int]]):
+        pass
+
+
+class Saveable:
+    def load(self, path):
+        f = open(path, "rb")
+        tmp_dict = pickle.load(f)
+        f.close()
+
+        self.__dict__.update(tmp_dict)
+
+    def save(self, path):
+        f = open(path, "wb")
+        pickle.dump(self.__dict__, f, 2)
+        f.close()
 
 
 class Checkpointable(abc.ABC):
@@ -45,7 +95,7 @@ class Checkpointable(abc.ABC):
         chp = torch.load(directory, map_location=self.device)
         self.load_state_dict(chp)
 
-    def register_module(self, key: str, module: torch.nn.Module):
+    def register_module(self, key: str, module: "Checkpointable"):
         """
         Registers a module in the model buffer.
         Args:
@@ -96,18 +146,6 @@ class AbstractAlgorithm(Checkpointable, metaclass=abc.ABCMeta):
         """
         raise NotImplementedError("Cannot instantiate Abstract")
 
-    def get_parameters(self) -> Union[Dict, torch.nn.Module]:
-        """Returns the parameters of the contained modules. Useful for freezing all related parameters
-
-        Returns:
-            List[torch.nn.Module]: a list of parameter instances (can break with nested modules)
-        """
-        params = []
-        for k, v in self.model_buffer.items():
-            # needs to concatenate the list to flatten them
-            params += list(v.parameters())
-        return params
-
     def get_optimizer(self) -> Union[torch.optim.Optimizer, Dict]:
         """Returns the optimizer for the contained modules
 
@@ -116,5 +154,6 @@ class AbstractAlgorithm(Checkpointable, metaclass=abc.ABCMeta):
         """
         raise NotImplementedError("Cannot instantiate Abstract")
 
+    @abc.abstractmethod
     def get_step(self) -> Callable:
         pass
