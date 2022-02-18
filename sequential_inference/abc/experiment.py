@@ -1,6 +1,7 @@
 import os
 
 import abc
+import pickle
 
 from omegaconf import omegaconf
 from sequential_inference.abc.data import AbstractDataHandler
@@ -48,11 +49,11 @@ class AbstractExperiment(Checkpointable, metaclass=abc.ABCMeta):
             raise NotInitializedException("Data handler not set")
         experiment_status = {}
         if preempted:
+            print("Reloading preempted experiment")
             with open(os.path.join(cfg.chp_dir, "status"), "rb") as f:
-                experiment_status["status"] = f.readlines().join("")
-            checkpoints = os.path.join("chp", "checkpoints")
+                experiment_status = pickle.load(f)
+            checkpoints = os.path.join(cfg.chp_dir, "checkpoints")
             list_dir = os.listdir(checkpoints)
-            experiment_status["epoch_number"] = len(list_dir)
             checkpoint_location = sorted(list_dir)[-1]
             self.load(os.path.join(checkpoints, checkpoint_location))
         else:

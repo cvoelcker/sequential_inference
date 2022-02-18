@@ -20,7 +20,10 @@ class TestSetup(unittest.TestCase):
     def test_initialize(self):
         with initialize(config_path="../config"):
             # config is relative to a module
-            cfg = compose(config_name="test_initialize", overrides=[])
+            cfg = compose(
+                config_name="test_initialize",
+                overrides=["hydra.run.dir=./outputs/setup_test_1"],
+            )
 
             print(cfg)
 
@@ -85,9 +88,10 @@ class TestSetup(unittest.TestCase):
 
         with initialize(config_path="../config"):
             # config is relative to a module
-            cfg = compose(config_name="test_initialize", overrides=[])
-
-            print(cfg)
+            cfg = compose(
+                config_name="test_initialize",
+                overrides=["hydra.run.dir=./outputs/setup_test_2"],
+            )
 
             preempted = vector_preface(cfg)
 
@@ -100,12 +104,38 @@ class TestSetup(unittest.TestCase):
             # connect data handler, logging and handle preemption
             experiment.register_observers(logging)
             experiment.set_data_handler(data)
-            experiment.initialize(cfg, preempted)
+            status = experiment.initialize(cfg, preempted)
             experiment.set_checkpoint(cfg.chp_dir)
 
-            experiment.train()
+            print(status)
+
+            experiment.train(status["epoch_number"])
+
+
+@hydra.main(config_path="../config", config_name="test_initialize")
+def test_train(cfg):
+    print(cfg)
+
+    preempted = vector_preface(cfg)
+
+    env: Env = hydra.utils.instantiate(cfg.env)
+    cfg = fix_env_config(cfg, env)
+    data: AbstractDataHandler = setup_data(cfg, env)
+    experiment: RLTrainingExperiment = hydra.utils.instantiate(cfg.experiment)
+    logging: List[AbstractLogger] = hydra.utils.instantiate(cfg.logging)
+
+    # connect data handler, logging and handle preemption
+    experiment.register_observers(logging)
+    experiment.set_data_handler(data)
+    status = experiment.initialize(cfg, preempted)
+    experiment.set_checkpoint(cfg.chp_dir)
+
+    print(status)
+
+    experiment.train(status["epoch_number"])
 
 
 if __name__ == "__main__":
-    TestSetup().test_initialize()
-    TestSetup().test_train()
+    # TestSetup().test_initialize()
+    # TestSetup().test_train()
+    test_train()

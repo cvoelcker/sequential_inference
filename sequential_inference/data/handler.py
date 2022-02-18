@@ -1,3 +1,4 @@
+import os
 from typing import Dict
 
 import omegaconf
@@ -34,9 +35,8 @@ def setup_data(cfg: omegaconf.DictConfig, env: Env) -> AbstractDataHandler:
 
 class DataStrategy(AbstractDataHandler):
     def initialize(self, cfg: omegaconf.DictConfig, preempted: bool):
-        run_dir = "chp"
         if preempted:
-            self.reload_preempted(run_dir)
+            self.reload_preempted(cfg)
         if cfg.data.init_data_source == "random":
             agent = RandomAgent(self.env.action_space)
             gather_data(self.env, agent, self.buffer, cfg.data.n_init)
@@ -51,8 +51,9 @@ class DataStrategy(AbstractDataHandler):
             self.dataset = BatchDataSampler(self.buffer)
         return super().initialize(cfg, preempted)
 
-    def reload_preempted(self, run_dir):
-        self.buffer.load(run_dir)
+    def reload_preempted(self, cfg):
+        chp_dir = os.path.join(cfg.chp_dir, "data/save.torch")
+        self.buffer.load(chp_dir)
 
     def get_batch(self, batch_size: int) -> Dict[str, torch.Tensor]:
         return self.dataset.get_next(batch_size)

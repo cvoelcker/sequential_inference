@@ -177,14 +177,13 @@ class CsvLogger(AbstractLogger):
 
 
 class Checkpointing:
-    def __init__(self, chp_dir=".", chp_name="checkpoint", overwrite=False):
+    def __init__(self, chp_dir=".", chp_name="checkpoints", overwrite=False):
         self.overwrite = overwrite
 
-        self.chp_dir = os.path.join(chp_dir, "checkpoints")
-        self.chp_name = chp_name
+        self.chp_dir = os.path.join(chp_dir, chp_name)
 
         if overwrite:
-            shutil.rmtree(self.chp_dir)
+            shutil.rmtree(self.chp_dir, ignore_errors=True)
             os.makedirs(self.chp_dir)
             self.counter = 0
         else:
@@ -194,14 +193,16 @@ class Checkpointing:
 
     def __call__(self, checkpointable: Checkpointable):
         to_save = checkpointable.state_dict()
-        path = os.path.join(self.chp_dir, self.chp_name + f"_{self.counter:06d}.torch")
+        if self.overwrite:
+            path = os.path.join(self.chp_dir, f"save.torch")
+        else:
+            path = os.path.join(self.chp_dir, f"{self.counter:06d}.torch")
         self.counter += 1
         torch.save(to_save, path)
         return {}
 
     def get_latest(self) -> str:
         all_checkpoints = sorted(os.listdir(self.chp_dir))
-        all_checkpoints = [chp for chp in all_checkpoints if self.chp_name + "_" in chp]
         if len(all_checkpoints) == 0:
             raise ValueError("No checkpoint found")
         else:
@@ -209,5 +210,4 @@ class Checkpointing:
 
     def get_num_saved(self) -> int:
         all_checkpoints = sorted(os.listdir(self.chp_dir))
-        all_checkpoints = [chp for chp in all_checkpoints if self.chp_name + "_" in chp]
         return len(all_checkpoints)

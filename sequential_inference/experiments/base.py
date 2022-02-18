@@ -36,6 +36,7 @@ class AbstractTrainingExperiment(AbstractExperiment):
             raise NotInitializedException("Data is not initialized")
         total_train_steps = start_epoch * self.epoch_steps
         for e in range(start_epoch, self.epochs):
+            print(f"Epoch {e}")
             self.epoch = e
             for _ in tqdm(range(self.epoch_steps)):
                 stats = self.train_step()
@@ -62,16 +63,17 @@ class AbstractTrainingExperiment(AbstractExperiment):
         pass
 
     def set_checkpoint(self, chp_dir):
-        self.checkpointing = Checkpointing(chp_dir, "experiment")
-        self.data_checkpointing = Checkpointing(chp_dir, "data")
+        self.chp_dir = chp_dir
+        self.checkpointing = Checkpointing(chp_dir, "checkpoints")
+        self.data_checkpointing = Checkpointing(chp_dir, "data", overwrite=True)
 
     def checkpoint(self):
         if self.checkpointing is not None:
-            with open(os.path.join(self.checkpointing.chp_dir, "status"), "wb") as f:
+            with open(os.path.join(self.chp_dir, "status"), "wb") as f:
                 pickle.dump(
                     {
                         "status": "training",
-                        "epoch_number": self.epochs + 1,
+                        "epoch_number": self.epoch + 1,
                     },
                     f,
                 )

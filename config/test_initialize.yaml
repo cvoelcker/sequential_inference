@@ -1,13 +1,18 @@
 defaults:
-  - _self_
   - env: gym
   - data: online
   - experiment: rl_experiment
+  - _self_
 
 env:
   obs_dim: 0
   obs_action_dim: 0
   action_dim: 0
+
+experiment:
+  epochs: 10
+  epoch_steps: 1000
+  batch_size: 256
 
 logging:
   _target_: sequential_inference.util.setup.hydra_make_list
