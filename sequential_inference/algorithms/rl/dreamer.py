@@ -1,6 +1,9 @@
-from typing import Optional
-from torch import nn
+from typing import Callable, Dict, Optional, Tuple
+
 import torch
+from torch import nn
+from torch.optim import Adam
+
 from sequential_inference.abc.rl import AbstractAgent, AbstractRLAlgorithm
 from sequential_inference.algorithms.rl.agents import PolicyNetworkAgent
 
@@ -10,6 +13,8 @@ class DreamerAlgorithm(AbstractRLAlgorithm):
         self,
         actor: nn.Module,
         value: nn.Module,
+        actor_lr: float,
+        critic_lr: float,
         lambda_discount: float,
         gamma_discount: float,
         horizon: int,
@@ -18,12 +23,25 @@ class DreamerAlgorithm(AbstractRLAlgorithm):
         super().__init__()
         self.actor = actor
         self.value = value
+
+        self.actor_lr = actor_lr
+        self.critic_lr = critic_lr
+
+        self.actor_optimizer = Adam(self.actor.parameters(), lr=actor_lr)
+        self.critic_optimizer = Adam(self.value.parameters(), lr=critic_lr)
+
         self.lambda_discount = lambda_discount
+        self.horizon_discount = self.lambda_discount ** torch.arange(horizon).to(
+            self.device
+        )
         self.gamma_discount = gamma_discount
+        self.discount = self.gamma_discount ** torch.arange(horizon).to(self.device)
         self.horizon = horizon
 
         self.register_module("actor", actor)
         self.register_module("value", value)
+        self.register_module("actor_optimizer", self.actor_optimizer)
+        self.register_module("critic_optimizer", self.critic_optimizer)
 
     def compute_loss(
         self,
@@ -31,9 +49,11 @@ class DreamerAlgorithm(AbstractRLAlgorithm):
         actions: Optional[torch.Tensor] = None,
         rewards: Optional[torch.Tensor] = None,
         done: Optional[torch.Tensor] = None,
-    ) -> torch.Tensor:
+    ) -> Tuple[Tuple[torch.Tensor, torch.Tensor], Dict]:
+        assert rewards is not None, "Rewards must be provided"
 
-        values = self.value(obs)
+        batch_size = obs.shape[0]
+        values: torch.Tensor = self.value(obs)
         predicted_values = values[:, 1:]
         values = values[:, :1]
 
@@ -41,20 +61,14 @@ class DreamerAlgorithm(AbstractRLAlgorithm):
 
         # create the weighted prediction matrices
         predicted_values = (
-            predicted_values.view(self.batch_size, self.horizon) * self.discount
+            predicted_values.view(batch_size, self.horizon) * self.discount
         )
-        predicted_values_mat = torch.diag_embed(predicted_values, offset=1)
         predicted_rewards = (
-            predicted_rewards.view(self.batch_size, self.horizon) * self.discount
+            predicted_rewards.view(batch_size, self.horizon) * self.discount
         )
-        predicted_rewards_mat = predicted_rewards[:, None, :].repeat(1, self.horizon, 1)
-        predicted_rewards_mat = torch.tril(predicted_rewards_mat)
-
-        # calculate the weighted target
-        predicted_results = predicted_rewards_mat + predicted_values_mat
-        predicted_results = torch.sum(predicted_results, dim=1)
-        predicted_results = predicted_results * self.horizon_discount
-        target = (torch.sum(predicted_results, -1) * (1 - self.discount)).detach()
+        cumulative_predicted_rewards = torch.cumsum(predicted_rewards, dim=1)
+        cumulative_predicted_rewards = cumulative_predicted_rewards + values
+        target = (cumulative_predicted_rewards * self.horizon_discount).sum(-1).detach()
 
         # value loss
         value_loss = torch.mean((target - values) ** 2)
@@ -64,7 +78,26 @@ class DreamerAlgorithm(AbstractRLAlgorithm):
             torch.sum(predicted_rewards, -1) + predicted_values[:, -1].detach()
         )
 
-        return value_loss, action_loss
+        return (value_loss, action_loss), {
+            "action_loss": action_loss.detach(),
+            "value_loss": value_loss.detach(),
+        }
+
+    def get_step(self) -> Callable[[Tuple, Dict], Dict]:
+        def _step(losses, stats):
+            value_loss, actor_loss = losses
+
+            self.critic_optimizer.zero_grad()
+            value_loss.backward()
+            self.critic_optimizer.step()
+
+            self.actor_optimizer.zero_grad()
+            actor_loss.backward()
+            self.actor_optimizer.step()
+
+            return stats
+
+        return _step
 
     def get_agent(self) -> AbstractAgent:
-        return PolicyNetworkAgent(self.policy, latent=True, observation=False)
+        return PolicyNetworkAgent(self.actor, latent=True, observation=False)

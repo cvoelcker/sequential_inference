@@ -9,7 +9,7 @@ from sequential_inference.abc.rl import AbstractAgent
 from sequential_inference.data.storage import BatchDataSampler, TrajectoryReplayBuffer
 from sequential_inference.data.offline import load_offline_data
 from sequential_inference.algorithms.rl.agents import RandomAgent
-from sequential_inference.util.data import gather_data
+from sequential_inference.data.collection import gather_data
 from sequential_inference.util.rl_util import load_agent
 
 
@@ -23,11 +23,13 @@ def setup_data(cfg: omegaconf.DictConfig, env: Env) -> AbstractDataHandler:
     )
 
     if cfg.data.name == "fixed":
-        return FixedDataStrategy(env, buffer)
+        handler = FixedDataStrategy(env, buffer)
     elif cfg.data.name == "online":
-        return OnlineDataSamplingStrategy(env, buffer)
+        handler = OnlineDataSamplingStrategy(env, buffer)
+        handler.set_num_sampling_steps(cfg.data.n, cfg.data.n_init)
     else:
         raise ValueError(f"Unknown data strategy {cfg.data.name}")
+    return handler
 
 
 class DataStrategy(AbstractDataHandler):
@@ -71,7 +73,11 @@ class OnlineDataSamplingStrategy(DataStrategy):
     def update(
         self, epoch_log: Dict[str, torch.Tensor], agent: AbstractAgent, **kwargs
     ):
-        gather_data(self.env, agent, self.buffer, self.n)
+        print("Called")
+        log = gather_data(self.env, agent, self.buffer, self.n, explore=True)
+
         self.dataset = BatchDataSampler(self.buffer)
-        # TODO: return some data stats potentially
-        return epoch_log
+        if log is None:
+            return epoch_log
+        else:
+            return {**log, **epoch_log}

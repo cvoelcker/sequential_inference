@@ -1,0 +1,12 @@
+# @package experiment
+
+_target_: sequential_inference.experiments.dreamer.DreamerExperiment
+
+defaults:
+  - _self_
+  - rl_algorithm: dreamer
+  - model_algorithm: dreamer_model
+
+epochs: 1000
+epoch_steps: 1000
+batch_size: 128

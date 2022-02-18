@@ -1,5 +1,5 @@
 import copy
-from typing import Dict, Optional, Tuple
+from typing import Callable, Dict, Optional, Tuple
 
 import math
 
@@ -48,7 +48,7 @@ class SACAlgorithm(AbstractRLAlgorithm):
         self.actor = actor
         self.critic = critic
         self.q_target = copy.deepcopy(self.critic)
-        self.q_target.requires_grad_ = False
+        self.q_target.requires_grad = False
         self.alpha = AlphaModule(alpha)
 
         self.actor_lr = actor_lr
@@ -82,7 +82,7 @@ class SACAlgorithm(AbstractRLAlgorithm):
         actions: Optional[torch.Tensor] = None,
         rewards: Optional[torch.Tensor] = None,
         done: Optional[torch.Tensor] = None,
-    ) -> Tuple[Tuple[torch.Tensor], Dict]:
+    ) -> Tuple[Tuple[torch.Tensor, torch.Tensor, torch.Tensor], Dict]:
         assert actions is not None
         assert rewards is not None
         assert done is not None
@@ -145,7 +145,7 @@ class SACAlgorithm(AbstractRLAlgorithm):
         loss = torch.mean((self.alpha().detach() * logprob - q))
         return loss, logprob
 
-    def alpha_loss(self, log_probs):
+    def alpha_loss(self, log_probs) -> torch.Tensor:
         return -(self.alpha() * (log_probs.detach() + self.target_entropy)).mean()
 
     def update_target_networks(self):
@@ -173,29 +173,26 @@ class SACAlgorithm(AbstractRLAlgorithm):
     def get_agent(self) -> AbstractAgent:
         return PolicyNetworkAgent(self.actor, self.latent, self.observation)
 
-    def get_step(self):
-        def _step(obs, actions, rewards, done):
+    def get_step(self) -> Callable[[Tuple, Dict], Dict]:
+        def _step(losses: Tuple, stats: Dict) -> Dict:
             update_stats = {}
 
-            (q_loss, actor_loss, alpha_loss), stats = self.compute_loss(
-                obs, actions, rewards, done
-            )
+            (q_loss, actor_loss, alpha_loss) = losses
 
             self.actor_optimizer.zero_grad()
             actor_loss.backward(retain_graph=True)
-            actor_norm = self.actor_optimizer.step()
-            update_stats["actor_norm"] = actor_norm
+            self.actor_optimizer.step()
 
             self.critic_optimizer.zero_grad()
             q_loss.backward(retain_graph=True)
-            critic_norm = self.critic_optimizer.step()
-            update_stats["critic_norm"] = critic_norm
+            self.critic_optimizer.step()
 
             if self.update_alpha:
                 self.alpha_optimizer.zero_grad()
                 alpha_loss.backward()
-                alpha_norm = self.alpha_optimizer.step()
-                update_stats["alpha_norm"] = alpha_norm
+                self.alpha_optimizer.step()
+
+            self.update_target_networks()
 
             return {**stats, **update_stats}
 

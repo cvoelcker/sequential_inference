@@ -279,7 +279,7 @@ class TanhGaussian(Gaussian):
         super(Gaussian, self).__init__()
         self.net = create_mlp(
             input_dim,
-            2 * output_dim if std is None else output_dim,
+            2 * output_dim[-1] if std is None else output_dim,
             hidden_units,
         )
 

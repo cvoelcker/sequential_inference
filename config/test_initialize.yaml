@@ -6,6 +6,7 @@ defaults:
 
 env:
   obs_dim: 0
+  obs_action_dim: 0
   action_dim: 0
 
 logging:

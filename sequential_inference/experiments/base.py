@@ -7,6 +7,7 @@ import torch
 from sequential_inference.abc.experiment import AbstractExperiment, AbstractRLExperiment
 from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
 from sequential_inference.abc.rl import AbstractRLAlgorithm
+from sequential_inference.util.errors import NotInitializedException
 
 
 class AbstractTrainingExperiment(AbstractExperiment):
@@ -27,6 +28,8 @@ class AbstractTrainingExperiment(AbstractExperiment):
         self.train(int(status["epoch_number"]))
 
     def train(self, start_epoch: int = 0):
+        if self.data is None:
+            raise NotInitializedException("Data is not initialized")
         total_train_steps = start_epoch * self.epoch_steps
         for _ in range(start_epoch, self.epochs):
             for _ in tqdm(range(self.epoch_steps)):
@@ -35,7 +38,7 @@ class AbstractTrainingExperiment(AbstractExperiment):
                 total_train_steps += 1
             epoch_log = self.after_epoch({})
             self.notify_observers("epoch", epoch_log, total_train_steps)
-            self.checkpoint(self)
+            # self.checkpoint(self)
         self.close_observers()
 
     def after_epoch(self, d):
@@ -76,14 +79,23 @@ class RLTrainingExperiment(AbstractRLExperiment, AbstractTrainingExperiment):
         self.register_module("rl_algorithm", self.rl_algorithm)
 
     def train_step(self) -> Dict[str, torch.Tensor]:
+        if self.data is None:
+            raise NotInitializedException("Data not initialized")
         batch = self.data.get_batch(self.batch_size)
         unpacked_batch = self.unpack_batch(batch)
         return self.rl_train_step(*unpacked_batch)
 
     def rl_train_step(self, obs, act, rew, done) -> Dict[str, torch.Tensor]:
         loss, stats = self.rl_algorithm.compute_loss(obs, act, rew, done)
-        self._step_rl(loss)
+        stats = self._step_rl(loss, stats)
         return stats
+
+    def after_epoch(self, epoch_log: Dict[str, torch.Tensor]):
+        if self.data is None:
+            raise NotInitializedException("Data not initialized")
+        epoch_log = super().after_epoch(epoch_log)
+        epoch_log = self.data.update(epoch_log, self.rl_algorithm.get_agent())
+        return epoch_log
 
 
 class ModelTrainingExperiment(AbstractTrainingExperiment):

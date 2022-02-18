@@ -65,7 +65,7 @@ class TorchTensorboardHandler(AbstractLogger):
         reset_logdir=True,
     ):
         self.keys = keys
-        full_path = os.path.join(os.path.abspath(log_dir), name_dir)
+        full_path = os.path.join(os.path.abspath(log_dir), name_dir)  # type: ignore
         self.logger = SummaryWriter(full_path, flush_secs=10)
         print(f"Logging to {full_path}")
         if reset_logdir:
@@ -178,6 +178,9 @@ class Checkpointing:
     def __init__(self, chp_dir, chp_name, counter=0, overwrite=False):
         self.counter = counter
         self.overwrite = overwrite
+
+        if not os.path.exists(chp_dir):
+            os.makedirs(chp_dir)
 
         self.chp_dir = chp_dir
         self.chp_name = chp_name

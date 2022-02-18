@@ -1,3 +1,4 @@
+from typing import Dict, Optional
 import torch
 
 from sequential_inference.abc.common import Env
@@ -14,15 +15,16 @@ def gather_data(
     buffer: AbstractDataBuffer,
     steps: int,
     explore: bool = True,
-) -> None:
+) -> Optional[Dict[str, torch.Tensor]]:
     if isinstance(buffer, TrajectoryReplayBuffer):
-        gather_trajectory_data(env, agent, buffer, steps, explore)
+        log = gather_trajectory_data(env, agent, buffer, steps, explore)
     elif isinstance(buffer, AbstractDataBuffer):
-        gather_sequential_data(env, agent, buffer, steps, explore)
+        log = gather_sequential_data(env, agent, buffer, steps, explore)
     else:
         raise NotImplementedError(
             f"Data gathering not implemented for this buffer {type(buffer)}"
         )
+    return log
 
 
 def gather_sequential_data(
@@ -41,21 +43,23 @@ def gather_trajectory_data(
     buffer: TrajectoryReplayBuffer,
     steps: int,
     explore: bool = True,
-) -> None:
+) -> Dict[str, torch.Tensor]:
 
     trajectory_length = buffer.trajectory_length
 
-    # TODO think about saving task in replay buffer
-    observations, actions, rewards, _, dones = run_agent_in_vec_environment(
+    observations, actions, rewards, tasks, dones = run_agent_in_vec_environment(
         env, agent, steps, explore
     )
-    for obs, act, rew, done in zip(observations, actions, rewards, dones):
+    for obs, act, rew, task, done in zip(observations, actions, rewards, tasks, dones):
         obs_len = obs.shape[0]
         act_len = act.shape[0]
         rew_len = rew.shape[0]
         done_len = done.shape[0]
+        task_len = task.shape[0]
         if obs_len > trajectory_length:
-            raise ValueError("Data sampling: sampled trajectory longer then max buffer")
+            raise ValueError(
+                f"Data sampling: sampled trajectory longer then max buffer: {obs_len} in {trajectory_length}"
+            )
         obs = torch.cat(
             [obs, torch.zeros(trajectory_length - obs_len, *obs.shape[1:])], 0
         )
@@ -68,7 +72,11 @@ def gather_trajectory_data(
         done = torch.cat(
             [done, torch.ones(trajectory_length - done_len, *done.shape[1:])], 0
         )
-        buffer.insert({"obs": obs, "act": act, "rew": rew, "done": done})
+        task = torch.cat(
+            [task, torch.zeros(trajectory_length - task_len, *task.shape[1:])], 0
+        )
+        buffer.insert({"obs": obs, "act": act, "rew": rew, "task": task, "done": done})
+    return {"average_reward": torch.stack(rewards).sum(1).mean().cpu().detach()}
 
 
 def load_offline_data():

@@ -4,7 +4,8 @@ name: online
 init_data_source: random
 
 buffer_num_trajectories: 10000
-buffer_trajectory_length: 200
+buffer_trajectory_length: 1000
 sample_length: 16
 
 n_init: 10000
+n: 1000

@@ -2,9 +2,12 @@ from typing import Dict
 
 import torch
 from sequential_inference.abc.data import Env
+from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
+from sequential_inference.algorithms.rl.dreamer import DreamerAlgorithm
 
 from sequential_inference.experiments.base import ModelBasedRLTrainingExperiment
 from sequential_inference.models.base.network_util import FreezeParameters
+from sequential_inference.util.errors import NotInitializedException
 from sequential_inference.util.rl_util import rollout_with_policy
 
 
@@ -15,28 +18,33 @@ class DreamerExperiment(ModelBasedRLTrainingExperiment):
 
     def __init__(
         self,
-        env: Env,
         horizon: bool,
-        batch_size: int,
         epoch_steps: int,
         epochs: int,
-        log_frequency: int,
+        model_algorithm: AbstractSequenceAlgorithm,
+        rl_algorithm: DreamerAlgorithm,
+        model_batch_size: int = 32,
+        rl_batch_size: int = 32,
     ):
-        super().__init__(env, batch_size, epoch_steps, epochs, log_frequency)
+        assert isinstance(
+            rl_algorithm, DreamerAlgorithm
+        ), "rl_algorithm must be a DreamerAlgorithm"
+        super().__init__(
+            epoch_steps,
+            epochs,
+            model_algorithm,
+            rl_algorithm,
+            model_batch_size=model_batch_size,
+            rl_batch_size=rl_batch_size,
+        )
 
         self.horizon = horizon
-        self.discount = (
-            torch.ones((1, self.horizon)) * self.rl_algorithm.discount
-        ) ** torch.arange(self.horizon)
-        self.horizon_discount = (
-            torch.ones((1, self.horizon)) * self.discount
-        ) ** torch.arange(self.horizon)
-        self.discount = self.discount.to(self.device)
-        self.horizon_discount = self.horizon_discount.to(self.device)
 
     def train_step(self):
         # update the planet model
-        batch = self.data.get_batch(self.batch_size)
+        if self.data is None:
+            raise NotInitializedException("data must be set before training")
+        batch = self.data.get_batch(self.model_batch_size)
         unpacked_batch = self.unpack_batch(batch)
         stats = self.model_train_step(*unpacked_batch)
 
@@ -47,12 +55,15 @@ class DreamerExperiment(ModelBasedRLTrainingExperiment):
 
     def rl_train_step(self) -> Dict[str, torch.Tensor]:
         # part one: calculate regression target for value function prediction
-        batch = self.data.get_batch(self.batch_size)
+        if self.data is None:
+            raise NotInitializedException("data must be set before training")
+        batch = self.data.get_batch(self.rl_batch_size)
         obs, act, rew, done = self.unpack_batch(batch)
+        batch_size = obs.shape[0]
 
         with FreezeParameters(self.model_algorithm.get_parameters()):
-            _, latents = self.model_algorithm.infer_sequence(obs, act, rew, done)
-            assert latents.shape[0] == self.batch_size
+            _, latents = self.model_algorithm.infer_sequence(obs, act, rew)
+            assert latents.shape[0] == self.rl_batch_size
             (
                 predicted_latents,
                 predicted_actions,
@@ -65,18 +76,17 @@ class DreamerExperiment(ModelBasedRLTrainingExperiment):
                 reconstruct=False,
                 explore=True,
             )
-            predicted_values = self.rl_algorithm.get_values(predicted_latents)
 
             # DEBUG assertions
             assert (
-                predicted_latents.shape[0] == self.batch_size
-            ), f"predicted_latents.shape[0]: {predicted_latents.shape[0]} != self.batch_size: {self.batch_size}"
+                predicted_latents.shape[0] == batch_size
+            ), f"predicted_latents.shape[0]: {predicted_latents.shape[0]} != self.batch_size: {batch_size}"
             assert (
-                predicted_actions.shape[0] == self.batch_size
-            ), f"predicted_actions.shape[0]: {predicted_actions.shape[0]} != self.batch_size: {self.batch_size}"
+                predicted_actions.shape[0] == batch_size
+            ), f"predicted_actions.shape[0]: {predicted_actions.shape[0]} != self.batch_size: {batch_size}"
             assert (
-                predicted_rewards.shape[0] == self.batch_size
-            ), f"predicted_rewards.shape[0]: {predicted_rewards.shape[0]} != self.batch_size: {self.batch_size}"
+                predicted_rewards.shape[0] == batch_size
+            ), f"predicted_rewards.shape[0]: {predicted_rewards.shape[0]} != self.batch_size: {batch_size}"
             assert (
                 predicted_latents.shape[1] == self.horizon
             ), f"predicted_latents.shape[1]: {predicted_latents.shape[1]} != self.horizon: {self.horizon}"
@@ -86,24 +96,12 @@ class DreamerExperiment(ModelBasedRLTrainingExperiment):
             assert (
                 predicted_rewards.shape[1] == self.horizon
             ), f"predicted_rewards.shape[1]: {predicted_rewards.shape[1]} != self.horizon: {self.horizon}"
-            assert (
-                predicted_values.shape == predicted_rewards.shape
-            ), f"predicted_values.shape: {predicted_values.shape} != predicted_rewards.shape: {predicted_rewards.shape}"
 
             obs = torch.cat([latents[:, -1:], predicted_latents], dim=1)
             rewards = torch.cat([rew, predicted_rewards], dim=1)
 
-            value_loss, actor_loss = self.rl_algorithm.compute_loss(
-                obs, None, rewards, None
-            )
+            losses, stats = self.rl_algorithm.compute_loss(obs, None, rewards, None)
 
-        self.value_optimizer.zero_grad()
-        self.actor_optimizer.zero_grad()
+            stats = self._step_rl(losses, stats)
 
-        value_loss.backward()
-        actor_loss.backward()
-
-        self.value_optimizer.step()
-        self.actor_optimizer.step()
-
-        return {"actor_loss": actor_loss.detach(), "value_loss": value_loss.detach()}
+        return stats

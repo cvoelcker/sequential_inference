@@ -18,7 +18,6 @@ actor:
   input_dim: ${latent_dim}
   output_dim: ${action_dim}
   hidden_units: [256, 256]
-  std: None
   leaky_slope: 0.
   multiplier: 1.
 

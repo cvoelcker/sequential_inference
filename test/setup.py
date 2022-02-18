@@ -7,6 +7,7 @@ from sequential_inference.abc.common import Env
 from sequential_inference.abc.experiment import AbstractExperiment
 from sequential_inference.abc.util import AbstractLogger
 from sequential_inference.data.handler import AbstractDataHandler, setup_data
+from sequential_inference.log.logger import Checkpointing
 from sequential_inference.util.setup import fix_env_config
 from sequential_inference.util.vector import vector_preface
 
@@ -22,6 +23,9 @@ def test_initialize(cfg):
     data: AbstractDataHandler = setup_data(cfg, env)
     experiment: AbstractExperiment = hydra.utils.instantiate(cfg.experiment)
     logging: List[AbstractLogger] = hydra.utils.instantiate(cfg.logging)
+
+    checkpointer = Checkpointing("./checkpoints", "checkpoint", 0)
+    checkpointer(experiment)
 
     # connect data handler, logging and handle preemption
     experiment.register_observers(logging)

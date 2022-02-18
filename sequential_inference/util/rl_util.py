@@ -125,6 +125,7 @@ def run_agent_in_vec_environment(
 
         if torch.all(done):
             # move buffer entries to return lists
+            environment.reset()
             policy.reset()
             for obs, act, rew, done, task in buffer.empty():
                 observations.append(obs)

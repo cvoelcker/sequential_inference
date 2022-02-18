@@ -98,7 +98,7 @@ class TrajectoryReplayBuffer(AbstractDataBuffer):
             (num_trajectories, trajectory_length, *act_space.shape), dtype=torch.float
         ).to(self.device)
         self.r = torch.zeros((num_trajectories, trajectory_length, 1)).to(self.device)
-        self.d = torch.zeros((num_trajectories, trajectory_length, 1)).to(self.device)
+        self.d = torch.ones((num_trajectories, trajectory_length, 1)).to(self.device)
         self.t = torch.zeros((num_trajectories, trajectory_length, 1)).to(self.device)
 
         self.trajectory_length = trajectory_length

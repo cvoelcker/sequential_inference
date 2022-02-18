@@ -10,6 +10,7 @@ from typing import Any, Dict, Optional
 import torch
 
 from sequential_inference.abc.common import Checkpointable
+from sequential_inference.util.errors import NotInitializedException
 
 
 class AbstractExperiment(Checkpointable, metaclass=abc.ABCMeta):
@@ -43,18 +44,20 @@ class AbstractExperiment(Checkpointable, metaclass=abc.ABCMeta):
             preempted (bool): a flag checking for preempted training
             run_dir (str): the directory to store the experiment
         """
+        if self.data is None:
+            raise NotInitializedException("Data handler not set")
         experiment_status = {}
         if preempted:
             with open(os.path.join("chp", "status"), "rb") as f:
                 experiment_status["status"] = f.readlines().join("")
             checkpoints = os.path.join("chp", "checkpoints")
             list_dir = os.listdir(checkpoints)
-            experiment_status["checkpoint_number"] = len(list_dir)
+            experiment_status["epoch_number"] = len(list_dir)
             checkpoint_location = sorted(list_dir)[-1]
             self.load(os.path.join(checkpoints, checkpoint_location))
         else:
             experiment_status["status"] = "new"
-            experiment_status["checkpoint_number"] = 0
+            experiment_status["epoch_number"] = 0
 
         self.data.initialize(cfg, preempted)
 
