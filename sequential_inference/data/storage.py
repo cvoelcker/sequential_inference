@@ -38,6 +38,12 @@ class DataBuffer(AbstractDataBuffer):
         self.fill_counter = 0
         self.full = False
 
+        self.register_module("s", self.s)  # type: ignore
+        self.register_module("a", self.a)  # type: ignore
+        self.register_module("r", self.r)  # type: ignore
+        self.register_module("d", self.d)  # type: ignore
+        self.register_module("t", self.t)  # type: ignore
+
     def insert(self, trajectory):
         traj_len = trajectory["obs"].shape[0]
 
@@ -82,6 +88,7 @@ class TrajectoryReplayBuffer(AbstractDataBuffer):
         sample_length=1,
         device="cpu",
     ):
+        super().__init__()
         self.device = device
 
         obs_space = env.observation_space
@@ -106,6 +113,14 @@ class TrajectoryReplayBuffer(AbstractDataBuffer):
         self.capacity = num_trajectories
         self.fill_counter = 0
         self.full = False
+
+        print(self.state_dict())
+
+        self.register_module("s", self.s)  # type: ignore
+        self.register_module("a", self.a)  # type: ignore
+        self.register_module("r", self.r)  # type: ignore
+        self.register_module("d", self.d)  # type: ignore
+        self.register_module("t", self.t)  # type: ignore
 
     def insert(self, trajectory):
         self.s[self.fill_counter] = trajectory["obs"].to(self.device).detach()

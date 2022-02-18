@@ -4,14 +4,19 @@ from typing import Dict
 import torch
 from torch.utils.data import Dataset
 
-from sequential_inference.abc.common import Checkpointable, Env, Saveable
+from sequential_inference.abc.common import (
+    Checkpointable,
+    Env,
+    Saveable,
+    TorchContainer,
+)
 
 
-class AbstractDataBuffer(Dataset, Checkpointable):
+class AbstractDataBuffer(Dataset, TorchContainer):
     pass
 
 
-class AbstractDataHandler(Saveable):
+class AbstractDataHandler(abc.ABC):
 
     buffer: AbstractDataBuffer
     env: Env

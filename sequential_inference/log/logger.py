@@ -1,9 +1,11 @@
+import glob
 import shutil
 import os
 import pickle
 from collections import defaultdict
 import torch
 from torch.utils.tensorboard.writer import SummaryWriter
+from sequential_inference.abc.common import Checkpointable
 
 from sequential_inference.abc.experiment import AbstractExperiment
 from sequential_inference.abc.util import AbstractLogger
@@ -175,19 +177,37 @@ class CsvLogger(AbstractLogger):
 
 
 class Checkpointing:
-    def __init__(self, chp_dir, chp_name, counter=0, overwrite=False):
-        self.counter = counter
+    def __init__(self, chp_dir=".", chp_name="checkpoint", overwrite=False):
         self.overwrite = overwrite
 
-        if not os.path.exists(chp_dir):
-            os.makedirs(chp_dir)
-
-        self.chp_dir = chp_dir
+        self.chp_dir = os.path.join(chp_dir, "checkpoints")
         self.chp_name = chp_name
 
-    def __call__(self, experiment: AbstractExperiment):
-        to_save = experiment.state_dict()
+        if overwrite:
+            shutil.rmtree(self.chp_dir)
+            os.makedirs(self.chp_dir)
+            self.counter = 0
+        else:
+            if not os.path.exists(self.chp_dir):
+                os.makedirs(self.chp_dir)
+            self.counter = self.get_num_saved()
+
+    def __call__(self, checkpointable: Checkpointable):
+        to_save = checkpointable.state_dict()
         path = os.path.join(self.chp_dir, self.chp_name + f"_{self.counter:06d}.torch")
         self.counter += 1
         torch.save(to_save, path)
         return {}
+
+    def get_latest(self) -> str:
+        all_checkpoints = sorted(os.listdir(self.chp_dir))
+        all_checkpoints = [chp for chp in all_checkpoints if self.chp_name + "_" in chp]
+        if len(all_checkpoints) == 0:
+            raise ValueError("No checkpoint found")
+        else:
+            return os.path.join(self.chp_dir, all_checkpoints[-1])
+
+    def get_num_saved(self) -> int:
+        all_checkpoints = sorted(os.listdir(self.chp_dir))
+        all_checkpoints = [chp for chp in all_checkpoints if self.chp_name + "_" in chp]
+        return len(all_checkpoints)

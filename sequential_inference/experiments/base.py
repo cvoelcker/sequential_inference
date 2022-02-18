@@ -1,4 +1,6 @@
-from typing import Dict, Tuple
+import os
+import pickle
+from typing import Dict, Optional, Tuple
 import abc
 
 from tqdm import tqdm
@@ -7,6 +9,7 @@ import torch
 from sequential_inference.abc.experiment import AbstractExperiment, AbstractRLExperiment
 from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
 from sequential_inference.abc.rl import AbstractRLAlgorithm
+from sequential_inference.log.logger import Checkpointing
 from sequential_inference.util.errors import NotInitializedException
 
 
@@ -21,6 +24,7 @@ class AbstractTrainingExperiment(AbstractExperiment):
         epochs: int,
     ):
         super().__init__()
+        self.checkpointing: Optional[Checkpointing] = None
         self.epoch_steps = epoch_steps
         self.epochs = epochs
 
@@ -31,14 +35,15 @@ class AbstractTrainingExperiment(AbstractExperiment):
         if self.data is None:
             raise NotInitializedException("Data is not initialized")
         total_train_steps = start_epoch * self.epoch_steps
-        for _ in range(start_epoch, self.epochs):
+        for e in range(start_epoch, self.epochs):
+            self.epoch = e
             for _ in tqdm(range(self.epoch_steps)):
                 stats = self.train_step()
                 self.notify_observers("step", stats, total_train_steps)
                 total_train_steps += 1
             epoch_log = self.after_epoch({})
             self.notify_observers("epoch", epoch_log, total_train_steps)
-            # self.checkpoint(self)
+            self.checkpoint()
         self.close_observers()
 
     def after_epoch(self, d):
@@ -55,6 +60,25 @@ class AbstractTrainingExperiment(AbstractExperiment):
     @abc.abstractmethod
     def train_step(self) -> Dict[str, torch.Tensor]:
         pass
+
+    def set_checkpoint(self, chp_dir):
+        self.checkpointing = Checkpointing(chp_dir, "experiment")
+        self.data_checkpointing = Checkpointing(chp_dir, "data")
+
+    def checkpoint(self):
+        if self.checkpointing is not None:
+            with open(os.path.join(self.checkpointing.chp_dir, "status"), "wb") as f:
+                pickle.dump(
+                    {
+                        "status": "training",
+                        "epoch_number": self.epochs + 1,
+                    },
+                    f,
+                )
+            print("Checkpointing experiment")
+            self.checkpointing(self)
+        if self.data is not None and self.data_checkpointing is not None:
+            self.data_checkpointing(self.data.buffer)
 
 
 class RLTrainingExperiment(AbstractRLExperiment, AbstractTrainingExperiment):
@@ -119,6 +143,8 @@ class ModelTrainingExperiment(AbstractTrainingExperiment):
         self.register_module("model_algorithm", self.model_algorithm)
 
     def train_step(self) -> Dict[str, torch.Tensor]:
+        if self.data is None:
+            raise NotInitializedException("Data not initialized")
         batch = self.data.get_batch(self.batch_size)
         unpacked_batch = self.unpack_batch(batch)
         return self.model_train_step(*unpacked_batch)

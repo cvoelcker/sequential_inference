@@ -42,16 +42,12 @@ class Env(abc.ABC):
 
 class Saveable:
     def load(self, path):
-        f = open(path, "rb")
-        tmp_dict = pickle.load(f)
-        f.close()
-
-        self.__dict__.update(tmp_dict)
+        with open(path, "rb") as f:
+            self.__dict__.update(pickle.load(f))
 
     def save(self, path):
-        f = open(path, "wb")
-        pickle.dump(self.__dict__, f, 2)
-        f.close()
+        with open(path, "wb") as f:
+            pickle.dump(self.__dict__, f, 2)
 
 
 class Checkpointable(abc.ABC):
@@ -65,7 +61,9 @@ class Checkpointable(abc.ABC):
 
     def __init__(self):
         self.device = "cpu"
-        self.model_buffer: Dict[str, Checkpointable] = {}
+        self.model_buffer: Dict[
+            str, Union[Checkpointable, torch.nn.Module, torch.Tensor]
+        ] = {}
         super().__init__()
 
     def state_dict(self):
@@ -76,7 +74,10 @@ class Checkpointable(abc.ABC):
         """
         to_save = {}
         for k, v in self.model_buffer.items():
-            to_save[k] = v.state_dict()
+            if isinstance(v, torch.Tensor):
+                to_save[k] = v
+            else:
+                to_save[k] = v.state_dict()
         return to_save
 
     def load_state_dict(self, chp: Dict[str, OrderedDict]):
@@ -86,7 +87,10 @@ class Checkpointable(abc.ABC):
             chp (Dict[str, OrderedDict]): the (potentially nested) state dict that should be loaded
         """
         for k, v in self.model_buffer.items():
-            v.load_state_dict(chp[k])
+            if isinstance(v, torch.Tensor):
+                self.__dict__[k] = chp[k]
+            else:
+                v.load_state_dict(chp[k])
 
     def load(self, directory: str):
         """
@@ -115,6 +119,12 @@ class Checkpointable(abc.ABC):
 
 
 Checkpointable.register(torch.nn.Module)
+
+
+class TorchContainer(Checkpointable):
+    def load_state_dict(self, chp: Dict[str, OrderedDict]):
+        for k, v in chp.items():
+            self.__dict__[k] = v
 
 
 class AbstractAlgorithm(Checkpointable, metaclass=abc.ABCMeta):

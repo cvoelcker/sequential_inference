@@ -48,7 +48,7 @@ class AbstractExperiment(Checkpointable, metaclass=abc.ABCMeta):
             raise NotInitializedException("Data handler not set")
         experiment_status = {}
         if preempted:
-            with open(os.path.join("chp", "status"), "rb") as f:
+            with open(os.path.join(cfg.chp_dir, "status"), "rb") as f:
                 experiment_status["status"] = f.readlines().join("")
             checkpoints = os.path.join("chp", "checkpoints")
             list_dir = os.listdir(checkpoints)
@@ -89,6 +89,12 @@ class AbstractExperiment(Checkpointable, metaclass=abc.ABCMeta):
     def close_observers(self):
         for observer in self.observers:
             observer.close()
+
+    def set_checkpoint(self, chp_dir):
+        pass
+
+    def checkpoint(self):
+        pass
 
 
 class AbstractRLExperiment(AbstractExperiment, metaclass=abc.ABCMeta):
