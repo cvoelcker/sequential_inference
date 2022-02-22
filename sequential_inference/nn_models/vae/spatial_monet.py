@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.distributions as dists
 
-import sequential_inference.models.base.network_util as net_util
+import sequential_inference.nn_models.base.network_util as net_util
 
 
 # encoder and decoder were moved to base nets

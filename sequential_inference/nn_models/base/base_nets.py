@@ -7,13 +7,13 @@ Adapted from every repo ever ;)
 """
 
 from typing import Sequence, Tuple, Union
-from sequential_inference.models.base.dists import TanhNormal
+from sequential_inference.nn_models.base.dists import TanhNormal
 import torch
 from torch import nn
 import torch.nn.functional as F
 import torch.distributions as dists
 
-import sequential_inference.models.base.network_util as net_util
+import sequential_inference.nn_models.base.network_util as net_util
 
 
 def double_conv(in_channels, out_channels):
@@ -76,13 +76,13 @@ def create_mlp(
 
 
 class MLP(nn.Module):
-    def __init__(self, input_size, output_size, hidden_layers=1):
+    def __init__(self, input_dim, output_dim, hidden_units=(1,)):
         super().__init__()
-        if type(input_size) == torch.Size:
-            input_size = input_size[-1]
-        if type(output_size) == torch.Size:
-            output_size = output_size[-1]
-        self.net = create_mlp(input_size, output_size, hidden_layers)
+        if type(input_dim) == torch.Size:
+            input_dim = input_dim[-1]
+        if type(output_dim) == torch.Size:
+            output_dim = output_dim[-1]
+        self.net = create_mlp(input_dim, output_dim, hidden_units)
 
     def forward(self, x):
         return self.net(x)
@@ -284,7 +284,7 @@ class TanhGaussian(Gaussian):
         )
 
         self.std = std
-        self.multiplier = torch.Tensor(multiplier)
+        self.multiplier = torch.Tensor([multiplier])
 
     def forward(self, x):
         x = self.net(x)

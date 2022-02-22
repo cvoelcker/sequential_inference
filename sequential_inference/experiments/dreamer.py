@@ -3,10 +3,10 @@ from typing import Dict
 import torch
 from sequential_inference.abc.data import Env
 from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
-from sequential_inference.algorithms.rl.dreamer import DreamerAlgorithm
+from sequential_inference.algorithms.rl.dreamer import DreamerRLAlgorithm
 
 from sequential_inference.experiments.base import ModelBasedRLTrainingExperiment
-from sequential_inference.models.base.network_util import FreezeParameters
+from sequential_inference.nn_models.base.network_util import FreezeParameters
 from sequential_inference.util.errors import NotInitializedException
 from sequential_inference.util.rl_util import rollout_with_policy
 
@@ -22,12 +22,12 @@ class DreamerExperiment(ModelBasedRLTrainingExperiment):
         epoch_steps: int,
         epochs: int,
         model_algorithm: AbstractSequenceAlgorithm,
-        rl_algorithm: DreamerAlgorithm,
+        rl_algorithm: DreamerRLAlgorithm,
         model_batch_size: int = 32,
         rl_batch_size: int = 32,
     ):
         assert isinstance(
-            rl_algorithm, DreamerAlgorithm
+            rl_algorithm, DreamerRLAlgorithm
         ), "rl_algorithm must be a DreamerAlgorithm"
         super().__init__(
             epoch_steps,

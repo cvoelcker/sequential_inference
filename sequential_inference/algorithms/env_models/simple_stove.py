@@ -1,4 +1,4 @@
-from sequential_inference.models.dynamics.dynamics import (
+from sequential_inference.nn_models.dynamics.dynamics import (
     SimpleStoveLatentNetwork,
 )
 from sequential_inference.algorithms.env_models.simple_vi import VIModelAlgorithm

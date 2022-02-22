@@ -1,8 +1,8 @@
 from sequential_inference.util.rl_util import join_state_with_array
 import torch
 
-from sequential_inference.models.base.network_util import calc_kl_divergence
-from sequential_inference.models.dynamics.dynamics import (
+from sequential_inference.nn_models.base.network_util import calc_kl_divergence
+from sequential_inference.nn_models.dynamics.dynamics import (
     SLACLatentNetwork,
 )
 from sequential_inference.algorithms.env_models.simple_vi import VIModelAlgorithm

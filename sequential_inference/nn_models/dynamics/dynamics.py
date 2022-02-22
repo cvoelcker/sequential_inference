@@ -3,7 +3,7 @@ import torch.distributions as dists
 import torch.nn as nn
 
 from sequential_inference.abc.sequence_model import AbstractLatentModel
-from sequential_inference.models.base.base_nets import (
+from sequential_inference.nn_models.base.base_nets import (
     ConstantGaussian,
     Gaussian,
     OffsetGaussian,

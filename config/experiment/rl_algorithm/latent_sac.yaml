@@ -2,6 +2,17 @@
 
 _target_: sequential_inference.algorithms.rl.sac.SACAlgorithm
 
+defaults:
+  - actor: tanh_gaussian
+  - critic: twinned_mlp
+  - _self_
+
+critic:
+  input_dim: ${experiment.model_algorithm.latent_dim}
+
+actor:
+  input_dim: ${experiment.model_algorithm.latent_dim}
+
 alpha: 0.1
 gamma: 0.99
 target_gamma: 0.995
@@ -9,20 +20,3 @@ target_entropy: -6
 update_alpha: True
 latent: True
 observation: False
-
-latent_dim: 0
-action_dim: 0
-
-actor:
-  _target_: sequential_inference.models.base.base_nets.TanhGaussian
-  input_dim: ${latent_dim}
-  output_dim: ${action_dim}
-  hidden_units: [256, 256]
-  leaky_slope: 0.
-  multiplier: 1.
-
-critic:
-  _target_: sequential_inference.models.base.base_nets.TwinnedMLP
-  input_dim: ${latent_dim}
-  output_dim: 1
-  hidden_units: [256, 256]

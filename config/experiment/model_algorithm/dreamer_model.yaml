@@ -1,0 +1,16 @@
+# @package experiment.model_algorithm
+
+_target_: sequential_inference.algorithms.env_models.dreamer.DreamerModelAlgorithm
+
+action_dim: ${env.action_dim}
+kl_factor: 
+state_factor: 
+reward_factor: 
+feature_dim: 
+latent_dim: 
+recurrent_hidden_dim: 
+belief_dim: 
+hidden_units: [64, 64]
+leaky_slope: 0.2
+predict_from_prior: False
+condition_on_posterior: False

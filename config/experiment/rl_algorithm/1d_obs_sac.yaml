@@ -1,5 +1,10 @@
 # @package experiment.rl_algorithm
 
+defaults:
+  - actor: tanh_gaussian
+  - critic: twinned_mlp
+  - _self_
+
 _target_: sequential_inference.algorithms.rl.sac.SACAlgorithm
 
 actor_lr: 7e-4
@@ -12,17 +17,3 @@ target_entropy: -6
 update_alpha: True
 latent: False
 observation: True
-
-actor:
-  _target_: sequential_inference.models.base.base_nets.TanhGaussian
-  input_dim: ${env.obs_dim}
-  output_dim: ${env.action_dim}
-  hidden_units: [256, 256]
-  leaky_slope: 0.
-  multiplier: [1.]
-
-critic:
-  _target_: sequential_inference.models.base.base_nets.TwinnedMLP
-  input_dim: ${env.obs_action_dim}
-  output_dim: 1
-  hidden_units: [256, 256]

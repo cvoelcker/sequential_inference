@@ -8,7 +8,7 @@ from sequential_inference.abc.rl import AbstractAgent, AbstractRLAlgorithm
 from sequential_inference.algorithms.rl.agents import PolicyNetworkAgent
 
 
-class DreamerAlgorithm(AbstractRLAlgorithm):
+class DreamerRLAlgorithm(AbstractRLAlgorithm):
     def __init__(
         self,
         actor: nn.Module,

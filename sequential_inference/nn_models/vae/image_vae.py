@@ -1,9 +1,12 @@
 import torch
 from torch import nn
 
-from sequential_inference.models.base.base_nets import EncoderNet, BroadcastDecoderNet
-from sequential_inference.models.vae.vae_core import VAECore
-from sequential_inference.models.base.network_util import (
+from sequential_inference.nn_models.base.base_nets import (
+    EncoderNet,
+    BroadcastDecoderNet,
+)
+from sequential_inference.nn_models.vae.vae_core import VAECore
+from sequential_inference.nn_models.base.network_util import (
     differentiable_sampling,
     reconstruction_likelihood,
 )

@@ -1,0 +1,7 @@
+# @package experiment.rl_algorithm.actor
+
+_target_: sequential_inference.nn_models.base.base_nets.MLP
+
+input_dim: ${env.obs_action_dim}
+output_dim: ${env.action_dim}
+hidden_units: [256, 256]

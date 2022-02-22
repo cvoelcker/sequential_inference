@@ -99,7 +99,11 @@ class Checkpointable(abc.ABC):
         chp = torch.load(directory, map_location=self.device)
         self.load_state_dict(chp)
 
-    def register_module(self, key: str, module: "Checkpointable"):
+    def register_module(
+        self,
+        key: str,
+        module: "Union[Checkpointable, torch.nn.Module, torch.optim.Optimizer]",
+    ):
         """
         Registers a module in the model buffer.
         Args:

@@ -4,9 +4,10 @@ _target_: sequential_inference.experiments.dreamer.DreamerExperiment
 
 defaults:
   - _self_
-  - rl_algorithm: dreamer
+  - rl_algorithm: dreamer_rl
   - model_algorithm: dreamer_model
 
 epochs: 1000
 epoch_steps: 1000
-batch_size: 128
+rl_batch_size: 128
+model_batch_size: 128

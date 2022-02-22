@@ -1,8 +1,8 @@
 import torch
 
-from sequential_inference.models.vae.vae_core import VAECore
-from sequential_inference.models.base.base_nets import create_mlp
-from sequential_inference.models.base.network_util import reconstruction_likelihood
+from sequential_inference.nn_models.vae.vae_core import VAECore
+from sequential_inference.nn_models.base.base_nets import create_mlp
+from sequential_inference.nn_models.base.network_util import reconstruction_likelihood
 
 
 class InfoBottleneckEncoder(VAECore):

@@ -4,6 +4,7 @@ from typing import List
 
 import hydra
 from hydra import initialize, compose
+from omegaconf import OmegaConf
 
 import torch
 
@@ -114,7 +115,7 @@ class TestSetup(unittest.TestCase):
 
 @hydra.main(config_path="../config", config_name="test_initialize")
 def test_train(cfg):
-    print(cfg)
+    print(OmegaConf.to_https://support.vectorinstitute.ai/DesksAtVector?action=AttachFile&do=view&target=Wisp_+End+User+Instructionsyaml(cfg))
 
     preempted = vector_preface(cfg)
 

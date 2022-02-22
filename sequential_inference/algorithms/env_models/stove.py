@@ -10,8 +10,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Normal
 
-from sequential_inference.models.vae.image_vae import BroadcastVAE
-from sequential_inference.models.dynamics.structured_dynamics import Dynamics
+from sequential_inference.nn_models.vae.image_vae import BroadcastVAE
+from sequential_inference.nn_models.dynamics.structured_dynamics import Dynamics
 from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
 
 

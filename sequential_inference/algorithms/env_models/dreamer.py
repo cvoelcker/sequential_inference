@@ -1,10 +1,10 @@
 import torch
 
 from sequential_inference.algorithms.env_models.simple_vi import VIModelAlgorithm
-from sequential_inference.models.dynamics.dynamics import PlaNetLatentNetwork
+from sequential_inference.nn_models.dynamics.dynamics import PlaNetLatentNetwork
 
 
-class DreamerAlgorithm(VIModelAlgorithm):
+class DreamerModelAlgorithm(VIModelAlgorithm):
     def __init__(
         self,
         encoder,
