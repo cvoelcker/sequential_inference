@@ -92,7 +92,12 @@ class TrajectoryReplayBuffer(AbstractDataBuffer):
         self.device = device
 
         obs_space = env.observation_space
-        obs_type = env.reset().dtype
+        if len(obs_space.shape) == 3:
+            obs_type = torch.uint8
+            self.visual = True
+        else:
+            obs_type = env.reset().dtype
+            self.visual = False
         act_space = env.action_space
 
         self.obs_shape = obs_space.shape
@@ -129,16 +134,16 @@ class TrajectoryReplayBuffer(AbstractDataBuffer):
         self.d[self.fill_counter] = trajectory["done"].to(self.device).detach()
         self.t[self.fill_counter] = trajectory["task"].to(self.device).detach()
 
+        self.fill_counter += 1
+        if self.fill_counter == self.capacity:
+            self.full = True
+            self.fill_counter = 0
+
         self.length = (
             self.capacity * (self.trajectory_length - self.sample_length - 1)
             if self.full
             else self.fill_counter * (self.trajectory_length - self.sample_length - 1)
         )
-
-        self.fill_counter += 1
-        if self.fill_counter == self.capacity:
-            self.full = True
-            self.fill_counter = 0
 
     def __getitem__(self, k):
         t = k // (self.trajectory_length - self.sample_length - 1)
@@ -148,6 +153,9 @@ class TrajectoryReplayBuffer(AbstractDataBuffer):
         r = self.r[t, i : i + self.sample_length].float().squeeze(0)
         d = self.d[t, i : i + self.sample_length].float().squeeze(0)
         s_n = self.s[t, i + 1 : i + 1 + self.sample_length].float().squeeze(0)
+        if self.visual:
+            s = s / 255.0
+            s_n = s_n / 255.0
         return dict(obs=s, act=a, rew=r, next_obs=s_n, done=d)
 
     def __len__(self):

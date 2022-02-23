@@ -9,7 +9,7 @@ class DreamerModelAlgorithm(VIModelAlgorithm):
         self,
         encoder,
         decoder,
-        reward_decoder,
+        reward_decoder_hidden_units,
         action_dim,
         kl_factor: float,
         state_factor: float,
@@ -37,8 +37,9 @@ class DreamerModelAlgorithm(VIModelAlgorithm):
         super().__init__(
             encoder,
             decoder,
-            reward_decoder,
             latent,
+            reward_decoder_hidden_units,
+            action_dim,
             kl_factor,
             state_factor,
             reward_factor,
@@ -46,12 +47,14 @@ class DreamerModelAlgorithm(VIModelAlgorithm):
             condition_on_posterior=condition_on_posterior,
         )
 
-    def get_samples(self, latent):
+    def get_samples(self, latent, full=False):
         latent_ = []
 
         for l in latent:
             latent_.append(l[0])
 
         latent = torch.stack(latent_, 1)
-
-        return latent[..., : self.latent_dim]
+        if full:
+            return latent
+        else:
+            return latent[..., : self.latent_dim]

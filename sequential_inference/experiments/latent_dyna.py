@@ -4,6 +4,7 @@ import torch
 
 from sequential_inference.abc.data import Env
 from sequential_inference.experiments.base import ModelBasedRLTrainingExperiment
+from sequential_inference.util.errors import NotInitializedException
 from sequential_inference.util.rl_util import rollout_with_policy
 
 
@@ -15,11 +16,13 @@ class DynaTrainingExperiment(ModelBasedRLTrainingExperiment):
     is_model = True
 
     def train_step(self) -> Dict[str, torch.Tensor]:
-        batch = self.data.get_batch(self.batch_size)
+        if self.data is None:
+            raise NotInitializedException("data must be set before training")
+        batch = self.data.get_batch(self.model_batch_size)
         unpacked_batch = self.unpack_batch(batch)
         stats = self.model_train_step(*unpacked_batch)
 
-        rl_batch = self.data.get_model_batch(self.model_batch_size)
+        rl_batch = self.data.get_batch(self.rl_batch_size)
         unpacked_rl_batch = self.unpack_batch(rl_batch)
         rl_stats = self.rl_train_step(*unpacked_rl_batch)
 

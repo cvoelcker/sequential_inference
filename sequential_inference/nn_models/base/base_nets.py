@@ -6,7 +6,7 @@ Adapted from every repo ever ;)
 @author Claas
 """
 
-from typing import Sequence, Tuple, Union
+from typing import List, Sequence, Tuple, Union
 from sequential_inference.nn_models.base.dists import TanhNormal
 import torch
 from torch import nn
@@ -94,19 +94,20 @@ class EncoderNet(nn.Module):
     """
 
     def __init__(
-        self, input_size, output_size, layer_sizes, img_shape=(32, 32), **kwargs
+        self,
+        img_shape: Tuple[int, int, int],
+        output_size: int,
+        layer_sizes: List[int],
+        **kwargs
     ):
         super().__init__()
+        input_size = img_shape[0]
 
         self.latent_dim = output_size
-        self.img_shape = img_shape
-        if type(input_size) == torch.Size:
-            input_size = input_size[0]
-        if type(output_size) == torch.Size:
-            output_size = output_size[0]
+        self.img_shape = img_shape[1:]
 
         self.network = create_conv_layers(
-            input_size + 2,
+            input_size + 3,
             output_size,
             layer_sizes,
             max_pool=True,
@@ -131,17 +132,20 @@ class EncoderNet(nn.Module):
             nn.ReLU(inplace=False),
             nn.Linear(2 * self.latent_dim, 2 * self.latent_dim),
             nn.ReLU(inplace=False),
-            nn.Linear(2 * self.latent_dim, 2 * self.latent_dim),
-            nn.ReLU(inplace=False),
-            nn.Linear(2 * self.latent_dim, 2 * self.latent_dim),
+            nn.Linear(2 * self.latent_dim, self.latent_dim),
         )
 
     def forward(self, x):
-        coord_map = self.coord_map_const.repeat(x.shape[0], 1, 1, 1)  # type: ignore
+        batch_size = x.shape[0]
+        time_steps = x.shape[1]
+        channels = x.shape[2]
+        x = x.view(batch_size * time_steps, channels, *self.img_shape)
+        coord_map = self.coord_map_const.repeat(batch_size * time_steps, 1, 1, 1)  # type: ignore
         inp = torch.cat((x, coord_map), 1)
         x = self.network(inp)
         x = x.view(-1, self.conv_size)
         x = self.mlp(x)
+        x = x.view(batch_size, time_steps, -1)
         return x
 
 
@@ -150,21 +154,21 @@ class BroadcastDecoderNet(nn.Module):
     General parameterized encoding architecture for VAE components
     """
 
-    def __init__(self, latent_dim, output_shape, layers=[32, 32, 32]):
+    def __init__(
+        self, latent_dim: int, output_shape: Tuple[int, int, int], layers=[32, 32, 32]
+    ):
         super().__init__()
 
-        output_channels = output_shape[2]
-        img_shape = output_shape[0:2]
+        self.output_channels = output_shape[0]
+        img_shape = output_shape[1:]
 
         self.latent_dim = latent_dim
         self.img_shape = img_shape
 
-        if type(output_shape) == torch.Size:
-            output_shape = output_shape[0]
         # construct the core conv structure
         self.network = create_conv_layers(
             self.latent_dim + 2,
-            output_channels,
+            self.output_channels,
             layers,
             max_pool=False,
             padding=True,
@@ -178,11 +182,17 @@ class BroadcastDecoderNet(nn.Module):
     def forward(self, x):
         # adds coordinate information to z and
         # produces a tiled representation of z
+        batch_size = x.shape[0]
+        time_steps = x.shape[1]
+        x = x.view(batch_size * time_steps, self.latent_dim)
         z_scaled = x.unsqueeze(-1).unsqueeze(-1)
         z_tiled = z_scaled.repeat(1, 1, self.img_shape[0], self.img_shape[1])
         coord_map = self.coord_map_const.repeat(x.shape[0], 1, 1, 1)  # type: ignore
         inp = torch.cat((z_tiled, coord_map), 1)
         result = self.network(inp)
+        result = result.view(
+            batch_size, time_steps, self.output_channels, *self.img_shape
+        )
         return result
 
 

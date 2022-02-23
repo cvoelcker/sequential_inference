@@ -78,12 +78,12 @@ class SLACModelAlgorithm(VIModelAlgorithm):
 
     def infer_single_step(self, last_latent, obs, action=None, rewards=None):
         features = self.encoder(join_state_with_array(obs, rewards))
-        last_latent = last_latent[:, self.laten1_dim :]
+        last_latent = last_latent[:, self.latent1_dim :]
         _, posterior = self.latent(last_latent, last_latent, features, action=action)
         return self.get_samples(posterior)
 
     def predict_sequence(self, initial_latent, actions=None, reward=None):
-        prior_latent = initial_latent[:, self.laten1_dim :]
+        prior_latent = initial_latent[:, self.latent1_dim :]
         horizon = actions.shape[1]
 
         priors = []

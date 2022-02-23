@@ -12,7 +12,8 @@ class DreamerRLAlgorithm(AbstractRLAlgorithm):
     def __init__(
         self,
         actor: nn.Module,
-        value: nn.Module,
+        critic: nn.Module,
+        latent_size: int,
         actor_lr: float,
         critic_lr: float,
         lambda_discount: float,
@@ -21,8 +22,10 @@ class DreamerRLAlgorithm(AbstractRLAlgorithm):
     ):
 
         super().__init__()
+        self.latent_size = latent_size
+
         self.actor = actor
-        self.value = value
+        self.value = critic
 
         self.actor_lr = actor_lr
         self.critic_lr = critic_lr
@@ -39,35 +42,34 @@ class DreamerRLAlgorithm(AbstractRLAlgorithm):
         self.horizon = horizon
 
         self.register_module("actor", actor)
-        self.register_module("value", value)
+        self.register_module("value", critic)
         self.register_module("actor_optimizer", self.actor_optimizer)
         self.register_module("critic_optimizer", self.critic_optimizer)
 
     def compute_loss(
         self,
         obs: torch.Tensor,
+        next_obs: torch.Tensor,
         actions: Optional[torch.Tensor] = None,
         rewards: Optional[torch.Tensor] = None,
         done: Optional[torch.Tensor] = None,
     ) -> Tuple[Tuple[torch.Tensor, torch.Tensor], Dict]:
-        assert rewards is not None, "Rewards must be provided"
+        if rewards is None:
+            raise ValueError("Rewards are required")
 
         batch_size = obs.shape[0]
-        values: torch.Tensor = self.value(obs)
-        predicted_values = values[:, 1:]
-        values = values[:, :1]
 
-        predicted_rewards = rewards
+        # predict values
+        predicted_values = self.value(next_obs)
+        values = self.value(obs)
 
         # create the weighted prediction matrices
         predicted_values = (
             predicted_values.view(batch_size, self.horizon) * self.discount
         )
-        predicted_rewards = (
-            predicted_rewards.view(batch_size, self.horizon) * self.discount
-        )
-        cumulative_predicted_rewards = torch.cumsum(predicted_rewards, dim=1)
-        cumulative_predicted_rewards = cumulative_predicted_rewards + values
+        rewards = rewards.view(batch_size, self.horizon) * self.discount
+        cumulative_predicted_rewards = torch.cumsum(rewards, dim=1)  # type: ignore
+        cumulative_predicted_rewards = cumulative_predicted_rewards + predicted_values
         target = (cumulative_predicted_rewards * self.horizon_discount).sum(-1).detach()
 
         # value loss
@@ -75,7 +77,7 @@ class DreamerRLAlgorithm(AbstractRLAlgorithm):
 
         # action loss
         action_loss = -torch.mean(
-            torch.sum(predicted_rewards, -1) + predicted_values[:, -1].detach()
+            torch.sum(rewards, -1) + predicted_values[:, -1].detach()  # type: ignore
         )
 
         return (value_loss, action_loss), {
@@ -87,17 +89,19 @@ class DreamerRLAlgorithm(AbstractRLAlgorithm):
         def _step(losses, stats):
             value_loss, actor_loss = losses
 
+            self.actor_optimizer.zero_grad()
+            actor_loss.backward(retain_graph=True)
+            self.actor_optimizer.step()
+
             self.critic_optimizer.zero_grad()
             value_loss.backward()
             self.critic_optimizer.step()
-
-            self.actor_optimizer.zero_grad()
-            actor_loss.backward()
-            self.actor_optimizer.step()
 
             return stats
 
         return _step
 
     def get_agent(self) -> AbstractAgent:
-        return PolicyNetworkAgent(self.actor, latent=True, observation=False)
+        return PolicyNetworkAgent(
+            self.actor, latent=True, observation=False, max_latent_size=self.latent_size
+        )

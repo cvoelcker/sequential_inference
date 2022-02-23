@@ -301,7 +301,7 @@ class PlaNetLatentNetwork(AbstractLatentModel):
     def __init__(
         self,
         action_dim,
-        feature_dim=64,
+        feature_dim=[1],
         latent_dim=32,
         recurrent_hidden_dim=32,
         belief_dim=0,
@@ -316,7 +316,7 @@ class PlaNetLatentNetwork(AbstractLatentModel):
         self.rnn_init = ConstantGaussian(recurrent_hidden_dim, std=0.001)
 
         self.before_cell = create_mlp(
-            latent_dim + belief_dim + action_dim, recurrent_hidden_dim, hidden_units
+            latent_dim + action_dim[0], recurrent_hidden_dim, hidden_units
         )
         self.dynamics_cell = nn.GRUCell(recurrent_hidden_dim, recurrent_hidden_dim)
         self.prior = Gaussian(

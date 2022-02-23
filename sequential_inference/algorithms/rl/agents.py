@@ -45,24 +45,40 @@ class DummyAgent(AbstractAgent):
 class PolicyNetworkAgent(AbstractAgent):
     """SAC type agent where the policy is a neural network representing a distribution"""
 
-    def __init__(self, policy: torch.nn.Module, latent: bool, observation: bool):
+    def __init__(
+        self,
+        policy: torch.nn.Module,
+        latent: bool,
+        observation: bool,
+        max_latent_size: Optional[int] = None,
+    ):
         self.policy = policy
         self.latent = latent
         self.observation = observation
+        self.max_latent_size = max_latent_size
 
     def act(
         self,
-        observation: torch.Tensor,
+        observation: Optional[torch.Tensor] = None,
         reward: Optional[torch.Tensor] = None,
         context: Optional[torch.Tensor] = None,
         explore: bool = False,
     ) -> torch.Tensor:
+        if self.latent:
+            assert context is not None, "Context must be provided for latent policy"
+            if self.max_latent_size is None:
+                latent = context
+            else:
+                latent = context[:, : self.max_latent_size]
+        else:
+            latent = None
+
         if self.latent and not self.observation:
-            inp = [context]
+            inp = [latent]
         elif not self.latent and self.observation:
             inp = [observation]
         elif self.latent and self.observation:
-            inp = [observation, context]
+            inp = [latent, context]
         else:
             raise ValueError("Policy needs to depend on something ^^")
         action_dist = self.policy(*inp)

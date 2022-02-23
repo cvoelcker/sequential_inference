@@ -93,7 +93,7 @@ def center_of_mass(mask, device="cuda"):
 
 # Modified from https://github.com/juliusfrost/dreamer-pytorch
 class FreezeParameters:
-    def __init__(self, parameters: List[nn.Parameter]):
+    def __init__(self, parameters: List[nn.parameter.Parameter]):
         self.parameters = parameters
         self.param_states = [p.requires_grad for p in self.parameters]
 

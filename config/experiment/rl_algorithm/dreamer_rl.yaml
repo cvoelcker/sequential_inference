@@ -7,8 +7,14 @@ defaults:
 
 _target_: sequential_inference.algorithms.rl.dreamer.DreamerRLAlgorithm
 
+actor:
+  input_dim: ${experiment.model_algorithm.latent_dim}
+critic:
+  input_dim: ${experiment.model_algorithm.latent_dim}
+
 actor_lr: 3e-4
 critic_lr: 3e-7
 lambda_discount: 0.95
 gamma_discount: 0.99
-horizon: 16
+horizon: ${experiment.horizon}
+latent_size: ${experiment.model_algorithm.latent_dim}

@@ -153,7 +153,7 @@ class ModelTrainingExperiment(AbstractTrainingExperiment):
 
     def model_train_step(self, obs, act, rew, done) -> Dict[str, torch.Tensor]:
         loss, stats = self.model_algorithm.compute_loss(obs, act, rew, done)
-        self._step_model(loss)
+        self._model_step(loss, stats)
         return stats
 
 
@@ -189,7 +189,7 @@ class ModelBasedRLTrainingExperiment(AbstractTrainingExperiment, abc.ABC):
 
     def model_train_step(self, obs, act, rew, done) -> Dict[str, torch.Tensor]:
         loss, stats = self.model_algorithm.compute_loss(obs, act, rew, done)
-        self._step_model(loss)
+        stats = self._step_model(loss, stats)
         return stats
 
     def rl_train_step(self, obs, act, rew, done) -> Dict[str, torch.Tensor]:

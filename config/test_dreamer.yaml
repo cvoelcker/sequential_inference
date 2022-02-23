@@ -1,17 +1,26 @@
 defaults:
-  - env/gym
-  - data/online
-  - experiment/dreamer_experiment
+  - env: visual_dm_control
+  - data: online
+  - experiment: dreamer_experiment
   - _self_
+
+data:
+  buffer_num_trajectories: 100
+  buffer_trajectory_length: 100
+  n_init: 200
+  sample_length: 4
 
 env:
   obs_dim: 0
   obs_action_dim: 0
   action_dim: 0
+  episode_length: 100
 
 experiment:
   epochs: 10
   epoch_steps: 1000
+  horizon: 4
+  model_batch_size: 16
 
 logging:
   _target_: sequential_inference.util.setup.hydra_make_list
@@ -39,3 +48,5 @@ logging:
 cluster: local
 chp_dir: .
 device: cpu
+
+seed: 1

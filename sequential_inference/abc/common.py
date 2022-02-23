@@ -62,7 +62,8 @@ class Checkpointable(abc.ABC):
     def __init__(self):
         self.device = "cpu"
         self.model_buffer: Dict[
-            str, Union[Checkpointable, torch.nn.Module, torch.Tensor]
+            str,
+            Union[Checkpointable, torch.nn.Module, torch.Tensor, torch.optim.Optimizer],
         ] = {}
         super().__init__()
 
@@ -119,7 +120,8 @@ class Checkpointable(abc.ABC):
     def to(self, device: str):
         self.device = device
         for _, v in self.model_buffer.items():
-            v.to(device)
+            if not isinstance(v, torch.optim.Optimizer):
+                v.to(device)
 
 
 Checkpointable.register(torch.nn.Module)

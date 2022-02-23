@@ -1,18 +1,12 @@
-import unittest
-
 from typing import List
 
 import hydra
-from hydra import initialize, compose
 from omegaconf import OmegaConf
-
-import torch
 
 from sequential_inference.abc.common import Env
 from sequential_inference.abc.util import AbstractLogger
 from sequential_inference.data.handler import AbstractDataHandler, setup_data
 from sequential_inference.experiments.base import RLTrainingExperiment
-from sequential_inference.log.logger import Checkpointing
 from sequential_inference.util.setup import fix_env_config
 from sequential_inference.util.vector import vector_preface
 

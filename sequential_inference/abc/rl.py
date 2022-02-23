@@ -11,7 +11,7 @@ class AbstractAgent(abc.ABC):
     @abc.abstractmethod
     def act(
         self,
-        observation: torch.Tensor,
+        observation: Optional[torch.Tensor],
         reward: Optional[torch.Tensor] = None,
         context: Optional[torch.Tensor] = None,
         explore: bool = False,

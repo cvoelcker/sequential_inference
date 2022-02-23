@@ -8,7 +8,6 @@ from sequential_inference.algorithms.rl.dreamer import DreamerRLAlgorithm
 from sequential_inference.experiments.base import ModelBasedRLTrainingExperiment
 from sequential_inference.nn_models.base.network_util import FreezeParameters
 from sequential_inference.util.errors import NotInitializedException
-from sequential_inference.util.rl_util import rollout_with_policy
 
 
 class DreamerExperiment(ModelBasedRLTrainingExperiment):
@@ -61,16 +60,18 @@ class DreamerExperiment(ModelBasedRLTrainingExperiment):
         obs, act, rew, done = self.unpack_batch(batch)
         batch_size = obs.shape[0]
 
-        with FreezeParameters(self.model_algorithm.get_parameters()):
-            _, latents = self.model_algorithm.infer_sequence(obs, act, rew)
+        with FreezeParameters(self.model_algorithm.parameters()):
+            with torch.no_grad():
+                _, latents = self.model_algorithm.infer_sequence(
+                    obs, act, rew, full=True
+                )
             assert latents.shape[0] == self.rl_batch_size
             (
                 predicted_latents,
                 predicted_actions,
                 predicted_rewards,
-            ) = rollout_with_policy(
+            ) = self.model_algorithm.rollout_with_policy(
                 latents[:, -1],
-                self.model_algorithm,
                 self.rl_algorithm.get_agent(),
                 self.horizon,
                 reconstruct=False,
@@ -88,7 +89,7 @@ class DreamerExperiment(ModelBasedRLTrainingExperiment):
                 predicted_rewards.shape[0] == batch_size
             ), f"predicted_rewards.shape[0]: {predicted_rewards.shape[0]} != self.batch_size: {batch_size}"
             assert (
-                predicted_latents.shape[1] == self.horizon
+                predicted_latents.shape[1] == self.horizon + 1
             ), f"predicted_latents.shape[1]: {predicted_latents.shape[1]} != self.horizon: {self.horizon}"
             assert (
                 predicted_actions.shape[1] == self.horizon
@@ -97,10 +98,13 @@ class DreamerExperiment(ModelBasedRLTrainingExperiment):
                 predicted_rewards.shape[1] == self.horizon
             ), f"predicted_rewards.shape[1]: {predicted_rewards.shape[1]} != self.horizon: {self.horizon}"
 
-            obs = torch.cat([latents[:, -1:], predicted_latents], dim=1)
-            rewards = torch.cat([rew, predicted_rewards], dim=1)
+            obs = self.model_algorithm.get_samples([[latents[:, -1:].detach()]])
+            next_obs = predicted_latents[:, 1:]
+            rewards = predicted_rewards
 
-            losses, stats = self.rl_algorithm.compute_loss(obs, None, rewards, None)
+            losses, stats = self.rl_algorithm.compute_loss(
+                obs, next_obs, None, rewards, None
+            )
 
             stats = self._step_rl(losses, stats)
 

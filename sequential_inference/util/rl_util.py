@@ -10,52 +10,6 @@ from sequential_inference.abc.rl import AbstractAgent
 from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
 
 
-def rollout_with_policy(
-    initial_context: Dict[str, torch.Tensor],
-    model: AbstractSequenceAlgorithm,
-    policy: AbstractAgent,
-    horizon: int,
-    reconstruct: bool = False,
-    explore: bool = False,
-) -> Tuple[torch.Tensor, ...]:
-    _, posteriors = model.infer_sequence(
-        initial_context["obs"], initial_context["act"], initial_context["rew"]
-    )
-
-    latent = posteriors[:, -1]
-
-    predicted_latents = []
-    predicted_actions = []
-    reconstructions = []
-
-    # save first to conform to regular RL convention
-    predicted_latents.append(latent)
-
-    # iterate over horizon
-    for i in range(horizon):
-        # decide whether to obtain reconstructions (needed for policies which directly
-        # predict in observation space)
-        obs = model.reconstruct(latent)
-
-        act = policy.act(obs, context=latent, explore=explore)
-        latent = model.predict_sequence(latent, act)
-
-        predicted_actions.append(act)
-        predicted_latents.append(latent)
-        if reconstruct:
-            reconstructions.append(obs)
-
-    # put together results
-    predicted_latents = torch.stack(predicted_latents, 1)
-    predicted_actions = torch.stack(predicted_actions, 1)
-    rewards = model.reconstruct_reward(predicted_latents)
-    if reconstruct:
-        reconstructions = torch.stack(reconstructions, 1)
-        return predicted_latents, predicted_actions, rewards, reconstructions
-    else:
-        return predicted_latents, predicted_actions, rewards
-
-
 class Buffer:
     def __init__(self, num_envs: int):
         self.num_envs = num_envs
@@ -116,7 +70,7 @@ def run_agent_in_vec_environment(
     reward = None
 
     policy.reset()
-    for _ in tqdm(range(steps)):
+    for i in tqdm(range(steps)):
         action = policy.act(last_obs, reward, explore=explore)
         next_obs, reward, done, info = environment.step(action)
         buffer.add(last_obs, action, reward, done, info["task"])
