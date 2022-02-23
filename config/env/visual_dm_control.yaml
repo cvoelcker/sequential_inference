@@ -1,0 +1,29 @@
+# @package env
+
+_target_: sequential_inference.env.env.setup_environment
+
+type: dm_control
+env_id: ${env.domain_name}-${env.task_name}
+n_envs: 1
+seed: ${seed}
+device: ${device}
+
+domain_name: hopper
+task_name: stand
+difficulty: 
+dynamic_model_path: 
+background_dataset_path: 
+background_dataset_videos: 
+background_kwargs: 
+camera_kwargs: 
+render_kwargs: 
+pixels_only: True
+pixels_observation_key: 
+height: 64
+width: 64
+camera_id: 0
+frame_skip: 1
+environment_kwargs: 
+episode_length: 1000
+time_limit: 
+

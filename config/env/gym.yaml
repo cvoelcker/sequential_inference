@@ -1,0 +1,9 @@
+# @package env
+
+_target_: sequential_inference.env.env.setup_environment
+
+type: gym
+env_id: Pendulum-v0
+n_envs: 1
+seed: None
+device: ${device}

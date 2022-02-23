@@ -1,0 +1,9 @@
+# @package env
+
+_target_: sequential_inference.env.env.setup_environment
+
+type: brax
+env_id: ant
+n_envs: 16
+seed: None
+device: ${device}
