@@ -9,6 +9,8 @@ class TanhNormal:
     def __init__(self, mean, std, multiplier=1.0):
         self.dist = normal.Normal(mean, std)
         self.multiplier = multiplier
+        if isinstance(self.multiplier, torch.Tensor):
+            self.multiplier = self.multiplier.to(mean.device)
 
     def sample(self):
         return torch.tanh(self.dist.sample())
@@ -29,7 +31,7 @@ class TanhNormal:
             ),
             -1,
             keepdim=True,
-        )
+        ).to(samples.device)
         return samples * self.multiplier, mu_log_probs - tanh_correction
 
     @property

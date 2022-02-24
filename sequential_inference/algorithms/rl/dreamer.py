@@ -1,3 +1,4 @@
+from re import A
 from typing import Callable, Dict, Optional, Tuple
 
 import torch
@@ -45,6 +46,11 @@ class DreamerRLAlgorithm(AbstractRLAlgorithm):
         self.register_module("value", critic)
         self.register_module("actor_optimizer", self.actor_optimizer)
         self.register_module("critic_optimizer", self.critic_optimizer)
+
+    def to(self, device):
+        super().to(device)
+        self.horizon_discount = self.horizon_discount.to(device)
+        self.discount = self.discount.to(device)
 
     def compute_loss(
         self,

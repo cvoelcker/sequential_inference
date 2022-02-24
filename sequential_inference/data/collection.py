@@ -61,19 +61,43 @@ def gather_trajectory_data(
                 f"Data sampling: sampled trajectory longer then max buffer: {obs_len} in {trajectory_length}"
             )
         obs = torch.cat(
-            [obs, torch.zeros(trajectory_length - obs_len, *obs.shape[1:])], 0
+            [
+                obs,
+                torch.zeros(trajectory_length - obs_len, *obs.shape[1:]).to(obs.device),
+            ],
+            0,
         )
         act = torch.cat(
-            [act, torch.zeros(trajectory_length - act_len, *act.shape[1:])], 0
+            [
+                act,
+                torch.zeros(trajectory_length - act_len, *act.shape[1:]).to(obs.device),
+            ],
+            0,
         )
         rew = torch.cat(
-            [rew, torch.zeros(trajectory_length - rew_len, *rew.shape[1:])], 0
+            [
+                rew,
+                torch.zeros(trajectory_length - rew_len, *rew.shape[1:]).to(obs.device),
+            ],
+            0,
         )
         done = torch.cat(
-            [done, torch.ones(trajectory_length - done_len, *done.shape[1:])], 0
+            [
+                done,
+                torch.ones(trajectory_length - done_len, *done.shape[1:]).to(
+                    obs.device
+                ),
+            ],
+            0,
         )
         task = torch.cat(
-            [task, torch.zeros(trajectory_length - task_len, *task.shape[1:])], 0
+            [
+                task,
+                torch.zeros(trajectory_length - task_len, *task.shape[1:]).to(
+                    obs.device
+                ),
+            ],
+            0,
         )
         buffer.insert({"obs": obs, "act": act, "rew": rew, "task": task, "done": done})
     return {"average_reward": torch.stack(rewards).sum(1).mean().cpu().detach()}

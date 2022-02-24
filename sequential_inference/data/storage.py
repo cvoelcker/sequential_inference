@@ -22,15 +22,16 @@ class DataBuffer(AbstractDataBuffer):
         self.obs_shape = obs_space.shape
         self.act_shape = act_space.shape
 
-        self.s = torch.zeros((capacity, *obs_space.shape), dtype=obs_type).to(
-            self.device
-        )
-        self.a = torch.zeros((capacity, *act_space.shape), dtype=torch.float).to(
-            self.device
-        )
-        self.r = torch.zeros((capacity, 1)).to(self.device)
-        self.d = torch.zeros((capacity, 1)).to(self.device)
-        self.t = torch.zeros((capacity, 1)).to(self.device)
+        self.s = torch.zeros((capacity, *obs_space.shape), dtype=obs_type)  # .to(
+        #   self.device
+        # )
+        self.a = torch.zeros((capacity, *act_space.shape), dtype=torch.float)
+        # .to(
+        #     self.device
+        # )
+        self.r = torch.zeros((capacity, 1))  # .to(self.device)
+        self.d = torch.zeros((capacity, 1))  # .to(self.device)
+        self.t = torch.zeros((capacity, 1))  # .to(self.device)
 
         self.sample_length = sample_length
         self.capacity = capacity
@@ -55,24 +56,29 @@ class DataBuffer(AbstractDataBuffer):
             self.length = self.length + traj_len
 
         self.s[self.fill_counter : self.fill_counter + traj_len] = (
-            trajectory["obs"].to(self.device).detach()
-        )
+            trajectory["obs"].detach().to("cpu")
+        )  # .to(self.device).detach()
         self.a[self.fill_counter : self.fill_counter + traj_len] = (
-            trajectory["act"].to(self.device).detach()
-        )
+            trajectory["act"].detach().to("cpu")
+        )  # .to(self.device).detach()
         self.r[self.fill_counter : self.fill_counter + traj_len] = (
-            trajectory["rew"].to(self.device).detach()
-        )
+            trajectory["rew"].detach().to("cpu")
+        )  # .to(self.device).detach()
         self.d[self.fill_counter : self.fill_counter + traj_len] = (
-            trajectory["done"].to(self.device).detach()
-        )
+            trajectory["done"].detach().to("cpu")
+        )  # .to(self.device).detach()
 
     def __getitem__(self, i):
-        s = self.s[i : i + self.sample_length].float().squeeze(0)
-        a = self.a[i : i + self.sample_length].float().squeeze(0)
-        r = self.r[i : i + self.sample_length].float().squeeze(0)
-        d = self.d[i : i + self.sample_length].float().squeeze(0)
-        s_n = self.s[i + 1 : i + 1 + self.sample_length].float().squeeze(0)
+        s = self.s[i : i + self.sample_length].float().squeeze(0).to(self.device)
+        a = self.a[i : i + self.sample_length].float().squeeze(0).to(self.device)
+        r = self.r[i : i + self.sample_length].float().squeeze(0).to(self.device)
+        d = self.d[i : i + self.sample_length].float().squeeze(0).to(self.device)
+        s_n = (
+            self.s[i + 1 : i + 1 + self.sample_length]
+            .float()
+            .squeeze(0)
+            .to(self.device)
+        )
         return dict(obs=s, act=a, rew=r, next_obs=s_n, done=d)
 
     def __len__(self):
@@ -105,13 +111,19 @@ class TrajectoryReplayBuffer(AbstractDataBuffer):
 
         self.s = torch.zeros(
             (num_trajectories, trajectory_length, *obs_space.shape), dtype=obs_type
-        ).to(self.device)
+        )  # .to(self.device)
         self.a = torch.zeros(
             (num_trajectories, trajectory_length, *act_space.shape), dtype=torch.float
-        ).to(self.device)
-        self.r = torch.zeros((num_trajectories, trajectory_length, 1)).to(self.device)
-        self.d = torch.ones((num_trajectories, trajectory_length, 1)).to(self.device)
-        self.t = torch.zeros((num_trajectories, trajectory_length, 1)).to(self.device)
+        )  # .to(self.device)
+        self.r = torch.zeros(
+            (num_trajectories, trajectory_length, 1)
+        )  # .to(self.device)
+        self.d = torch.ones(
+            (num_trajectories, trajectory_length, 1)
+        )  # .to(self.device)
+        self.t = torch.zeros(
+            (num_trajectories, trajectory_length, 1)
+        )  # .to(self.device)
 
         self.trajectory_length = trajectory_length
         self.sample_length = sample_length
@@ -128,11 +140,11 @@ class TrajectoryReplayBuffer(AbstractDataBuffer):
         self.register_module("t", self.t)  # type: ignore
 
     def insert(self, trajectory):
-        self.s[self.fill_counter] = trajectory["obs"].to(self.device).detach()
-        self.a[self.fill_counter] = trajectory["act"].to(self.device).detach()
-        self.r[self.fill_counter] = trajectory["rew"].to(self.device).detach()
-        self.d[self.fill_counter] = trajectory["done"].to(self.device).detach()
-        self.t[self.fill_counter] = trajectory["task"].to(self.device).detach()
+        self.s[self.fill_counter] = trajectory["obs"].to("cpu").detach()
+        self.a[self.fill_counter] = trajectory["act"].to("cpu").detach()
+        self.r[self.fill_counter] = trajectory["rew"].to("cpu").detach()
+        self.d[self.fill_counter] = trajectory["done"].to("cpu").detach()
+        self.t[self.fill_counter] = trajectory["task"].to("cpu").detach()
 
         self.fill_counter += 1
         if self.fill_counter == self.capacity:
@@ -148,11 +160,16 @@ class TrajectoryReplayBuffer(AbstractDataBuffer):
     def __getitem__(self, k):
         t = k // (self.trajectory_length - self.sample_length - 1)
         i = k % (self.trajectory_length - self.sample_length - 1)
-        s = self.s[t, i : i + self.sample_length].float().squeeze(0)
-        a = self.a[t, i : i + self.sample_length].float().squeeze(0)
-        r = self.r[t, i : i + self.sample_length].float().squeeze(0)
-        d = self.d[t, i : i + self.sample_length].float().squeeze(0)
-        s_n = self.s[t, i + 1 : i + 1 + self.sample_length].float().squeeze(0)
+        s = self.s[t, i : i + self.sample_length].float().squeeze(0).to(self.device)
+        a = self.a[t, i : i + self.sample_length].float().squeeze(0).to(self.device)
+        r = self.r[t, i : i + self.sample_length].float().squeeze(0).to(self.device)
+        d = self.d[t, i : i + self.sample_length].float().squeeze(0).to(self.device)
+        s_n = (
+            self.s[t, i + 1 : i + 1 + self.sample_length]
+            .float()
+            .squeeze(0)
+            .to(self.device)
+        )
         if self.visual:
             s = s / 255.0
             s_n = s_n / 255.0

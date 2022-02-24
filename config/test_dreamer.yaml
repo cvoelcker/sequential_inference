@@ -5,10 +5,8 @@ defaults:
   - _self_
 
 data:
-  buffer_num_trajectories: 100
-  buffer_trajectory_length: 100
-  n_init: 200
-  sample_length: 4
+  buffer_num_trajectories: 1000
+  buffer_trajectory_length: 1000
 
 env:
   obs_dim: 0
@@ -19,8 +17,6 @@ env:
 experiment:
   epochs: 10
   epoch_steps: 1000
-  horizon: 4
-  model_batch_size: 16
 
 logging:
   _target_: sequential_inference.util.setup.hydra_make_list
@@ -47,6 +43,6 @@ logging:
 
 cluster: local
 chp_dir: .
-device: cpu
+device: cuda
 
 seed: 1

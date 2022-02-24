@@ -117,8 +117,12 @@ class EncoderNet(nn.Module):
 
         num_layers = len(layer_sizes)
 
-        coord_map = net_util.create_coord_buffer(self.img_shape)
-        self.register_buffer("coord_map_const", coord_map)
+        self.coord_map_const = nn.Parameter(
+            net_util.create_coord_buffer(self.img_shape)
+        )
+        self.coord_map_const.requires_grad = False
+        self.register_parameter(name="coord_map_const", param=self.coord_map_const)
+        # self.register_buffer("coord_map_const", coord_map)
 
         # computes the number of flattened output neurons in the convolutions
         self.conv_size = int(
@@ -209,21 +213,21 @@ class UNet(nn.Module):
         self.down_convs = nn.ModuleList()
         cur_in_channels = in_channels
         for i in range(num_blocks):
-            self.down_convs.append(double_conv(cur_in_channels, channel_base * 2**i))
-            cur_in_channels = channel_base * 2**i
+            self.down_convs.append(double_conv(cur_in_channels, channel_base * 2 ** i))
+            cur_in_channels = channel_base * 2 ** i
 
         self.tconvs = nn.ModuleList()
         for i in range(num_blocks - 1, 0, -1):
             self.tconvs.append(
                 nn.ConvTranspose2d(
-                    channel_base * 2**i, channel_base * 2 ** (i - 1), 2, stride=2
+                    channel_base * 2 ** i, channel_base * 2 ** (i - 1), 2, stride=2
                 )
             )
 
         self.up_convs = nn.ModuleList()
         for i in range(num_blocks - 2, -1, -1):
             self.up_convs.append(
-                double_conv(channel_base * 2 ** (i + 1), channel_base * 2**i)
+                double_conv(channel_base * 2 ** (i + 1), channel_base * 2 ** i)
             )
 
         self.final_conv = nn.Conv2d(channel_base, out_channels, 1)

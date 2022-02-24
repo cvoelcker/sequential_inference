@@ -11,6 +11,11 @@ class RandomAgent(AbstractAgent):
     def __init__(self, action_space: Space):
         self.action_space = action_space
 
+    def _sample_n(self, n: int):
+        for _ in range(n):
+            action = self.action_space.sample()
+            yield action
+
     def act(
         self,
         observation: torch.Tensor,
@@ -18,10 +23,12 @@ class RandomAgent(AbstractAgent):
         context: Optional[torch.Tensor] = None,
         explore: bool = False,
     ) -> torch.Tensor:
-        action = self.action_space.sample()
-        if len(action.shape) == 1:
-            return torch.from_numpy(action).unsqueeze(0)
-        return torch.from_numpy(action)
+        device = observation.device
+        batch_size = observation.shape[0]
+
+        return torch.stack(
+            [torch.from_numpy(a).to(device) for a in self._sample_n(batch_size)], 0
+        )
 
 
 class DummyAgent(AbstractAgent):
