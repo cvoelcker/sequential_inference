@@ -22,6 +22,7 @@ def test_train(cfg):
     data: AbstractDataHandler = setup_data(cfg, env)
     experiment: RLTrainingExperiment = hydra.utils.instantiate(cfg.experiment)
     experiment.to(cfg.device)
+    experiment.summarize()
     logging: List[AbstractLogger] = hydra.utils.instantiate(cfg.logging)
 
     # connect data handler, logging and handle preemption

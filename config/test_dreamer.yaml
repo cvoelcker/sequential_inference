@@ -12,11 +12,11 @@ env:
   obs_dim: 0
   obs_action_dim: 0
   action_dim: 0
-  episode_length: 100
+  episode_length: 1000
 
 experiment:
-  epochs: 10
-  epoch_steps: 1000
+  epochs: 1000
+  epoch_steps: 200
 
 logging:
   _target_: sequential_inference.util.setup.hydra_make_list

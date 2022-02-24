@@ -10,12 +10,12 @@ action_dim: ${env.action_dim}
 kl_factor: 1.
 state_factor: 1.
 reward_factor: 1.
-feature_dim: 64
-latent_dim: 64
-recurrent_hidden_dim: 64 
-belief_dim: 64
-hidden_units: [64, 64]
+feature_dim: 200
+latent_dim: 30
+recurrent_hidden_dim: 200
+belief_dim: 0
+hidden_units: [200, 200]
 leaky_slope: 0.2
-reward_decoder_hidden_units: [64, 64]
+reward_decoder_hidden_units: [200, 100]
 predict_from_prior: False
 condition_on_posterior: False

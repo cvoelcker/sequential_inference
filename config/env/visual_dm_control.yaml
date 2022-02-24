@@ -19,8 +19,8 @@ camera_kwargs:
 render_kwargs: 
 pixels_only: True
 pixels_observation_key: 
-height: 64
-width: 64
+height: 32
+width: 32
 camera_id: 0
 frame_skip: 1
 environment_kwargs: 

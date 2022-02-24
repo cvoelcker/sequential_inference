@@ -323,7 +323,7 @@ class PlaNetLatentNetwork(AbstractLatentModel):
             recurrent_hidden_dim, latent_dim, hidden_units=hidden_units
         )
         self.posterior = Gaussian(
-            recurrent_hidden_dim + feature_dim, latent_dim, hidden_units=hidden_units
+            recurrent_hidden_dim + latent_dim, latent_dim, hidden_units=hidden_units
         )
 
     def deter_encode(self, last_latent, action, global_belief=None):

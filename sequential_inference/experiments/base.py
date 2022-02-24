@@ -67,7 +67,9 @@ class AbstractTrainingExperiment(AbstractExperiment):
         self.data_checkpointing = Checkpointing(chp_dir, "data", overwrite=True)
 
     def checkpoint(self):
+        print("Checkpointing experiment")
         if self.checkpointing is not None:
+            print("Checkpointing models")
             with open(os.path.join(self.chp_dir, "status"), "wb") as f:
                 pickle.dump(
                     {
@@ -76,9 +78,9 @@ class AbstractTrainingExperiment(AbstractExperiment):
                     },
                     f,
                 )
-            print("Checkpointing experiment")
             self.checkpointing(self)
         if self.data is not None and self.data_checkpointing is not None:
+            print("Checkpointing data")
             self.data_checkpointing(self.data.buffer)
 
 

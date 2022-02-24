@@ -123,8 +123,18 @@ class Checkpointable(abc.ABC):
             if not isinstance(v, torch.optim.Optimizer):
                 v.to(device)
 
+    def summarize(self):
+        from torchinfo import summary
 
-Checkpointable.register(torch.nn.Module)
+        for k, v in self.model_buffer.items():
+            if isinstance(v, torch.nn.Module):
+                print("++++++++++++++++++++++++++++++++++++++")
+                print(f"++++++ {k}")
+                print("++++++++++++++++++++++++++++++++++++++")
+                summary(v)
+                print()
+            elif isinstance(v, Checkpointable):
+                v.summarize()
 
 
 class TorchContainer(Checkpointable):

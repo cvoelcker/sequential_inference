@@ -4,4 +4,4 @@ _target_: sequential_inference.nn_models.base.base_nets.BroadcastDecoderNet
 
 latent_dim: ${experiment.model_algorithm.latent_dim}
 output_shape: ${env.obs_dim} 
-layers: [32, 32, 32]
+layers: [32, 32, 4]
