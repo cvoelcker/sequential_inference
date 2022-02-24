@@ -52,7 +52,6 @@ class DreamerExperiment(ModelBasedRLTrainingExperiment):
         # update the rl model
         rl_stats = self.rl_train_step()
         stats["rl_step_cuda"] = torch.Tensor([torch.cuda.memory_reserved()]).float()
-        print(stats)
         return {**stats, **rl_stats}
 
     def rl_train_step(self) -> Dict[str, torch.Tensor]:
