@@ -83,7 +83,7 @@ class DreamerRLAlgorithm(AbstractRLAlgorithm):
 
         # action loss
         action_loss = -torch.mean(
-            torch.sum(rewards, -1) + predicted_values[:, -1].detach()  # type: ignore
+            torch.sum(rewards, -1) + predicted_values[:, -1]  # type: ignore
         )
 
         return (value_loss, action_loss), {

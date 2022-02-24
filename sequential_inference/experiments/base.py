@@ -18,15 +18,12 @@ class AbstractTrainingExperiment(AbstractExperiment):
     is_rl: bool = False
     is_model: bool = False
 
-    def __init__(
-        self,
-        epoch_steps: int,
-        epochs: int,
-    ):
+    def __init__(self, epoch_steps: int, epochs: int, log_interval: int):
         super().__init__()
         self.checkpointing: Optional[Checkpointing] = None
         self.epoch_steps = epoch_steps
         self.epochs = epochs
+        self.log_interval = log_interval
 
     def run(self, status: Dict[str, str]):
         self.train(int(status["epoch_number"]))
@@ -38,10 +35,12 @@ class AbstractTrainingExperiment(AbstractExperiment):
         for e in range(start_epoch, self.epochs):
             print(f"Epoch {e}")
             self.epoch = e
-            for _ in tqdm(range(self.epoch_steps)):
+            for i in tqdm(range(self.epoch_steps)):
                 stats = self.train_step()
                 self.notify_observers("step", stats, total_train_steps)
                 total_train_steps += 1
+                if i % self.log_interval == 0:
+                    self.notify_observers("log", stats, total_train_steps)
             epoch_log = self.after_epoch({})
             self.notify_observers("epoch", epoch_log, total_train_steps)
             self.checkpoint()
@@ -95,8 +94,9 @@ class RLTrainingExperiment(AbstractRLExperiment, AbstractTrainingExperiment):
         epochs: int,
         rl_algorithm: AbstractRLAlgorithm,
         batch_size: int = 32,
+        log_interval: int = 10,
     ):
-        super().__init__(epoch_steps, epochs)
+        super().__init__(epoch_steps, epochs, log_interval)
 
         self.rl_algorithm = rl_algorithm
         self._step_rl = self.rl_algorithm.get_step()
@@ -114,6 +114,7 @@ class RLTrainingExperiment(AbstractRLExperiment, AbstractTrainingExperiment):
     def rl_train_step(self, obs, act, rew, done) -> Dict[str, torch.Tensor]:
         loss, stats = self.rl_algorithm.compute_loss(obs, act, rew, done)
         stats = self._step_rl(loss, stats)
+        stats["rl_step_cuda"] = torch.Tensor([torch.cuda.memory_reserved()]).float()
         return stats
 
     def after_epoch(self, epoch_log: Dict[str, torch.Tensor]):
@@ -136,8 +137,9 @@ class ModelTrainingExperiment(AbstractTrainingExperiment):
         epochs: int,
         model_algorithm: AbstractSequenceAlgorithm,
         batch_size: int = 32,
+        log_interval: int = 10,
     ):
-        super().__init__(epoch_steps, epochs)
+        super().__init__(epoch_steps, epochs, log_interval)
         self.model_algorithm = model_algorithm
         self._model_step = self.model_algorithm.get_step()
         self.batch_size = batch_size
@@ -173,8 +175,9 @@ class ModelBasedRLTrainingExperiment(AbstractTrainingExperiment, abc.ABC):
         rl_algorithm: AbstractRLAlgorithm,
         model_batch_size: int = 32,
         rl_batch_size: int = 32,
+        log_interval: int = 10,
     ):
-        super().__init__(epoch_steps, epochs)
+        super().__init__(epoch_steps, epochs, log_interval)
         self.model_algorithm = model_algorithm
         self._step_model = self.model_algorithm.get_step()
         self.model_batch_size = model_batch_size

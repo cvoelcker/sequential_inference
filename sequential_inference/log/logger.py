@@ -68,7 +68,7 @@ class TorchTensorboardHandler(AbstractLogger):
     ):
         self.keys = keys
         full_path = os.path.join(os.path.abspath(log_dir), name_dir)  # type: ignore
-        self.logger = SummaryWriter(full_path, flush_secs=10)
+        self.logger = SummaryWriter(full_path)
         print(f"Logging to {full_path}")
         if reset_logdir:
             for the_file in os.listdir(full_path):
@@ -113,6 +113,8 @@ class TorchTensorboardHandler(AbstractLogger):
         else:
             self.step += 1
         self.logger.flush()
+        # if key == "epoch":
+        #     self.logger.close()
 
     def reset(self):
         self.step = 0

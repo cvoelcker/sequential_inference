@@ -76,6 +76,13 @@ class SACAlgorithm(AbstractRLAlgorithm):
         self.register_module("critic_optimizer", self.critic_optimizer)
         self.register_module("alpha_optimizer", self.alpha_optimizer)
 
+    def to(self, device):
+        super().to(device)
+        self.actor.to(device)
+        self.critic.to(device)
+        self.alpha.to(device)
+        self.q_target.to(device)
+
     def compute_loss(
         self,
         obs: torch.Tensor,

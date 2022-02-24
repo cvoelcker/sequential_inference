@@ -12,3 +12,4 @@ epoch_steps: 1000
 rl_batch_size: 128
 model_batch_size: 128
 horizon: 16
+log_interval: 100

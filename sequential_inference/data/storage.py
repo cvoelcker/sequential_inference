@@ -179,23 +179,44 @@ class TrajectoryReplayBuffer(AbstractDataBuffer):
         return self.length
 
 
-class BatchDataSampler(AbstractDataSampler):
-    """The BatchDataSampler iterates infinitely over a given dataset. It models the behavior of many RL algorithms that do not sample full batches.
-    To provide flexible batch sizes with minimal overhead, it holds a set of iterators for different batch sizes as "views" on the data.
-    """
+# class BatchDataSampler(AbstractDataSampler):
+#     """The BatchDataSampler iterates infinitely over a given dataset. It models the behavior of many RL algorithms that do not sample full batches.
+#     To provide flexible batch sizes with minimal overhead, it holds a set of iterators for different batch sizes as "views" on the data.
+#     """
+#
+#     def __init__(self, buffer: AbstractDataBuffer):
+#         self.buffer = buffer
+#
+#         self.iterators: Dict[int, Iterator[Dict[str, torch.Tensor]]] = {}
+#
+#     def _make_iterator(self, batch_size: int):
+#         _dataloader = torch.utils.data.DataLoader(  # type: ignore
+#             self.buffer, batch_size=batch_size, drop_last=True, shuffle=True
+#         )
+#         self.iterators[batch_size] = itertools.cycle(iter(_dataloader))
+#
+#     def get_next(self, batch_size: int):
+#         if batch_size not in self.iterators.keys():
+#             self._make_iterator(batch_size)
+#         return self.iterators[batch_size].__next__()
 
+
+class BatchDataSampler(AbstractDataSampler):
     def __init__(self, buffer: AbstractDataBuffer):
         self.buffer = buffer
-
         self.iterators: Dict[int, Iterator[Dict[str, torch.Tensor]]] = {}
 
     def _make_iterator(self, batch_size: int):
         _dataloader = torch.utils.data.DataLoader(  # type: ignore
             self.buffer, batch_size=batch_size, drop_last=True, shuffle=True
         )
-        self.iterators[batch_size] = itertools.cycle(iter(_dataloader))
+        self.iterators[batch_size] = iter(_dataloader)
 
-    def get_next(self, batch_size: int):
+    def get_next(self, batch_size):
         if batch_size not in self.iterators.keys():
             self._make_iterator(batch_size)
-        return self.iterators[batch_size].__next__()
+        try:
+            return self.iterators[batch_size].__next__()
+        except StopIteration as e:
+            self._make_iterator(batch_size)
+            return self.iterators[batch_size].__next__()

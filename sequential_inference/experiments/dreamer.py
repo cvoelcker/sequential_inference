@@ -24,6 +24,7 @@ class DreamerExperiment(ModelBasedRLTrainingExperiment):
         rl_algorithm: DreamerRLAlgorithm,
         model_batch_size: int = 32,
         rl_batch_size: int = 32,
+        log_interval: int = 100,
     ):
         assert isinstance(
             rl_algorithm, DreamerRLAlgorithm
@@ -35,6 +36,7 @@ class DreamerExperiment(ModelBasedRLTrainingExperiment):
             rl_algorithm,
             model_batch_size=model_batch_size,
             rl_batch_size=rl_batch_size,
+            log_interval=log_interval,
         )
 
         self.horizon = horizon
@@ -46,10 +48,11 @@ class DreamerExperiment(ModelBasedRLTrainingExperiment):
         batch = self.data.get_batch(self.model_batch_size)
         unpacked_batch = self.unpack_batch(batch)
         stats = self.model_train_step(*unpacked_batch)
-
+        stats["model_step_cuda"] = torch.Tensor([torch.cuda.memory_reserved()]).float()
         # update the rl model
         rl_stats = self.rl_train_step()
-
+        stats["rl_step_cuda"] = torch.Tensor([torch.cuda.memory_reserved()]).float()
+        print(stats)
         return {**stats, **rl_stats}
 
     def rl_train_step(self) -> Dict[str, torch.Tensor]:

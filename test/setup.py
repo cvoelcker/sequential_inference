@@ -115,7 +115,7 @@ class TestSetup(unittest.TestCase):
 
 @hydra.main(config_path="../config", config_name="test_initialize")
 def test_train(cfg):
-    print(OmegaConf.to_https://support.vectorinstitute.ai/DesksAtVector?action=AttachFile&do=view&target=Wisp_+End+User+Instructionsyaml(cfg))
+    print(OmegaConf.to_yaml(cfg))
 
     preempted = vector_preface(cfg)
 
@@ -123,6 +123,7 @@ def test_train(cfg):
     cfg = fix_env_config(cfg, env)
     data: AbstractDataHandler = setup_data(cfg, env)
     experiment: RLTrainingExperiment = hydra.utils.instantiate(cfg.experiment)
+    experiment.to(cfg.device)
     logging: List[AbstractLogger] = hydra.utils.instantiate(cfg.logging)
 
     # connect data handler, logging and handle preemption
