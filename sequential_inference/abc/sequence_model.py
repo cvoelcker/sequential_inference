@@ -8,6 +8,8 @@ from sequential_inference.abc.rl import AbstractAgent
 
 
 class AbstractSequenceAlgorithm(AbstractAlgorithm):
+    latent: "AbstractLatentModel"
+
     @abc.abstractmethod
     def infer_sequence(
         self,

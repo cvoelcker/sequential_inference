@@ -35,11 +35,11 @@ class AbstractTrainingExperiment(AbstractExperiment):
         for e in range(start_epoch, self.epochs):
             print(f"Epoch {e}")
             self.epoch = e
-            for i in tqdm(range(self.epoch_steps)):
+            for _ in tqdm(range(self.epoch_steps)):
                 stats = self.train_step()
                 self.notify_observers("step", stats, total_train_steps)
                 total_train_steps += 1
-                if i % self.log_interval == 0:
+                if total_train_steps % self.log_interval == 0:
                     self.notify_observers("log", stats, total_train_steps)
             epoch_log = self.after_epoch({})
             self.notify_observers("epoch", epoch_log, total_train_steps)
@@ -126,6 +126,9 @@ class RLTrainingExperiment(AbstractRLExperiment, AbstractTrainingExperiment):
         epoch_log = self.data.update(epoch_log, self.rl_algorithm.get_agent())
         return epoch_log
 
+    def get_agent(self):
+        return self.rl_algorithm.get_agent()
+
 
 class ModelTrainingExperiment(AbstractTrainingExperiment):
 
@@ -201,3 +204,6 @@ class ModelBasedRLTrainingExperiment(AbstractTrainingExperiment, abc.ABC):
         loss, stats = self.rl_algorithm.compute_loss(obs, act, rew, done)
         self._step_rl(loss)
         return stats
+
+    def get_agent(self):
+        return self.rl_algorithm.get_agent()

@@ -6,7 +6,11 @@ from torch import nn
 from torch.optim import Adam
 
 from sequential_inference.abc.rl import AbstractAgent, AbstractRLAlgorithm
-from sequential_inference.algorithms.rl.agents import PolicyNetworkAgent
+from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
+from sequential_inference.algorithms.rl.agents import (
+    InferencePolicyAgent,
+    PolicyNetworkAgent,
+)
 
 
 class DreamerRLAlgorithm(AbstractRLAlgorithm):
@@ -107,7 +111,10 @@ class DreamerRLAlgorithm(AbstractRLAlgorithm):
 
         return _step
 
-    def get_agent(self) -> AbstractAgent:
-        return PolicyNetworkAgent(
+    def get_agent(self, model: AbstractSequenceAlgorithm) -> AbstractAgent:
+        inner_agent = PolicyNetworkAgent(
             self.actor, latent=True, observation=False, max_latent_size=self.latent_size
+        )
+        return InferencePolicyAgent(
+            inner_agent, model, max_latent_size=self.latent_size
         )

@@ -91,3 +91,15 @@ class DreamerExperiment(ModelBasedRLTrainingExperiment):
             stats = self._step_rl(losses, stats)
 
         return stats
+
+    def after_epoch(self, epoch_log: Dict[str, torch.Tensor]):
+        if self.data is None:
+            raise NotInitializedException("Data not initialized")
+        epoch_log = super().after_epoch(epoch_log)
+        epoch_log = self.data.update(epoch_log, self.get_agent())
+        return epoch_log
+
+    def get_agent(self):
+        if not isinstance(self.rl_algorithm, DreamerRLAlgorithm):
+            raise ValueError("rl_algorithm must be a DreamerRLAlgorithm")
+        return self.rl_algorithm.get_agent(self.model_algorithm)
