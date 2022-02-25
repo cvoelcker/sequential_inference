@@ -16,7 +16,7 @@ env:
 
 experiment:
   epochs: 1000
-  epoch_steps: 200
+  epoch_steps: 5
 
 logging:
   _target_: sequential_inference.util.setup.hydra_make_list

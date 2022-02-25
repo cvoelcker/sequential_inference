@@ -31,8 +31,6 @@ def test_train(cfg):
     status = experiment.initialize(cfg, preempted)
     experiment.set_checkpoint(cfg.chp_dir)
 
-    print(status)
-
     experiment.train(status["epoch_number"])
 
 

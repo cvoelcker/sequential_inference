@@ -165,11 +165,11 @@ class VIModelAlgorithm(AbstractSequenceAlgorithm):
 
         return loss, stats
 
-    def infer_single_step(self, last_latent, obs, action=None, rewards=None):
-        features = self.encoder(join_state_with_array(obs, rewards))
-        last_latent = last_latent
-        _, posterior = self.latent(last_latent, last_latent, features, action=action)
-        return self.get_samples(posterior)
+    def infer_single_step(
+        self, last_prior, last_latent, obs, action=None, rewards=None, full=False
+    ):
+        features = self.encoder(join_state_with_array(obs.unsqueeze(1), rewards))[:, 0]
+        return self.latent(last_prior, last_latent, features, action=action)
 
     def predict_latent_sequence(self, initial_latent, actions=None, reward=None):
         prior_latent = initial_latent

@@ -5,6 +5,7 @@ import torch
 
 from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
 from sequential_inference.abc.rl import AbstractAgent
+from sequential_inference.util.rl_util import join_state_with_array
 
 
 class RandomAgent(AbstractAgent):
@@ -112,6 +113,7 @@ class InferencePolicyAgent(AbstractAgent):
         self.model = model
 
         self.state: Optional[torch.Tensor] = None
+        self.prior: Optional[torch.Tensor] = None
         self.last_action: Optional[torch.Tensor] = None
         self.last_reward: Optional[torch.Tensor] = None
 
@@ -122,6 +124,7 @@ class InferencePolicyAgent(AbstractAgent):
         the sequence
         """
         self.state: Optional[torch.Tensor] = None
+        self.prior: Optional[torch.Tensor] = None
         self.last_action: Optional[torch.Tensor] = None
         self.last_reward: Optional[torch.Tensor] = None
 
@@ -132,23 +135,35 @@ class InferencePolicyAgent(AbstractAgent):
         context: Optional[torch.Tensor] = None,
         explore: bool = False,
     ) -> torch.Tensor:
-        if context:
-            assert context is not None, "Context must be provided for latent policy"
+        if context is not None:
             if self.max_latent_size is None:
-                latent = context
+                self.state = context
             else:
-                latent = context[:, : self.max_latent_size]
-        elif not context and observation:
+                self.state = context[:, : self.max_latent_size]
+        elif observation is not None:
+            if reward is None:
+                self.last_reward = torch.zeros(
+                    (observation.shape[0], 1), dtype=torch.float
+                ).to(observation.device)
             if self.state is None:
-                self.state = self.model.latent.obtain_initial(observation)
-            if self.last_reward is None:
-                self.last_reward = torch.zeros_like(self.state[:, :, :1])
-            latent = self.model.infer_single_step(
-                self.state, observation, self.last_action, self.last_reward
-            )
+                features = join_state_with_array(observation.unsqueeze(1), self.last_reward)  # type: ignore
+                features = self.model.encoder(features)  # type: ignore
+                prior, posterior = self.model.latent.obtain_initial(features[:, 0])
+            else:
+                prior, posterior = self.model.infer_single_step(
+                    self.prior,  # type: ignore
+                    self.state,
+                    observation,
+                    self.last_action,
+                    self.last_reward,
+                    full=True,
+                )
+                self.last_reward = reward
+            self.prior = self.model.get_samples([prior], full=True)[:, 0]
+            self.state = self.model.get_samples([posterior], full=True)[:, 0]
         else:
             raise ValueError("Policy needs to depend on something ^^")
 
-        action = self.policy.act(observation, reward, latent, explore)
+        action = self.policy.act(observation, reward, self.state, explore)
         self.last_action = action
         return action

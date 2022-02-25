@@ -23,10 +23,12 @@ class AbstractSequenceAlgorithm(AbstractAlgorithm):
     @abc.abstractmethod
     def infer_single_step(
         self,
+        last_prior: torch.Tensor,
         last_latent: torch.Tensor,
         obs: torch.Tensor,
         action: Optional[torch.Tensor] = None,
         rewards: Optional[torch.Tensor] = None,
+        full=False,
     ) -> torch.Tensor:
         raise NotImplementedError("Cannot instantiate AbstractSequenceModel")
 
@@ -45,6 +47,14 @@ class AbstractSequenceAlgorithm(AbstractAlgorithm):
         latent: torch.Tensor,
         action: Optional[torch.Tensor] = None,
         full: bool = False,
+    ) -> torch.Tensor:
+        pass
+
+    @abc.abstractmethod
+    def get_samples(
+        self,
+        sample_list: List[Tuple[torch.Tensor, torch.distributions.Distribution]],
+        full: bool,
     ) -> torch.Tensor:
         pass
 

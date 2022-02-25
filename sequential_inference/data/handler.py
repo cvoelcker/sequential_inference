@@ -75,7 +75,8 @@ class OnlineDataSamplingStrategy(DataStrategy):
         self, epoch_log: Dict[str, torch.Tensor], agent: AbstractAgent, **kwargs
     ):
         print("Called")
-        log = gather_data(self.env, agent, self.buffer, self.n, explore=True)
+        with torch.no_grad():
+            log = gather_data(self.env, agent, self.buffer, self.n, explore=True)
 
         self.dataset = BatchDataSampler(self.buffer)
         if log is None:

@@ -74,7 +74,7 @@ class DreamerExperiment(ModelBasedRLTrainingExperiment):
                 predicted_rewards,
             ) = self.model_algorithm.rollout_with_policy(
                 latents[:, -1],
-                self.rl_algorithm.get_agent(),
+                self.rl_algorithm.get_agent(self.model_algorithm),
                 self.horizon,
                 reconstruct=False,
                 explore=True,
