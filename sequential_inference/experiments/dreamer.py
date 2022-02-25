@@ -80,26 +80,6 @@ class DreamerExperiment(ModelBasedRLTrainingExperiment):
                 explore=True,
             )
 
-            # DEBUG assertions
-            assert (
-                predicted_latents.shape[0] == batch_size
-            ), f"predicted_latents.shape[0]: {predicted_latents.shape[0]} != self.batch_size: {batch_size}"
-            assert (
-                predicted_actions.shape[0] == batch_size
-            ), f"predicted_actions.shape[0]: {predicted_actions.shape[0]} != self.batch_size: {batch_size}"
-            assert (
-                predicted_rewards.shape[0] == batch_size
-            ), f"predicted_rewards.shape[0]: {predicted_rewards.shape[0]} != self.batch_size: {batch_size}"
-            assert (
-                predicted_latents.shape[1] == self.horizon + 1
-            ), f"predicted_latents.shape[1]: {predicted_latents.shape[1]} != self.horizon: {self.horizon}"
-            assert (
-                predicted_actions.shape[1] == self.horizon
-            ), f"predicted_actions.shape[1]: {predicted_actions.shape[1]} != self.horizon: {self.horizon}"
-            assert (
-                predicted_rewards.shape[1] == self.horizon
-            ), f"predicted_rewards.shape[1]: {predicted_rewards.shape[1]} != self.horizon: {self.horizon}"
-
             obs = self.model_algorithm.get_samples([[latents[:, -1:].detach()]])
             next_obs = predicted_latents[:, 1:]
             rewards = predicted_rewards
