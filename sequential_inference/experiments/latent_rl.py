@@ -52,6 +52,4 @@ class LatentTrainingExperiment(ModelBasedRLTrainingExperiment):
     def get_agent(self) -> InferencePolicyAgent:
         agent = self.rl_algorithm.get_agent()
         agent = InferencePolicyAgent(agent, self.model_algorithm)
-        agent.latent = True
-        agent.observation = False
         return agent
