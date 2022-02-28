@@ -79,8 +79,8 @@ class DreamerRLAlgorithm(AbstractRLAlgorithm):
         )
         rewards = rewards.view(batch_size, self.horizon) * self.discount
         cumulative_predicted_rewards = torch.cumsum(rewards, dim=1)  # type: ignore
-        cumulative_predicted_rewards = cumulative_predicted_rewards + predicted_values
-        target = (cumulative_predicted_rewards * self.horizon_discount).sum(-1).detach()
+        cumulative_predicted_rewards + predicted_values
+        target = (1 - self.lambda_discount) * (cumulative_predicted_rewards * self.horizon_discount).sum(-1).detach()
 
         # value loss
         value_loss = torch.mean((target - values) ** 2)
