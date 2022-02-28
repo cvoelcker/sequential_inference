@@ -1,0 +1,16 @@
+# @package experiment.model_algorithm
+
+_target_: sequential_inference.algorithms.env_models.vae.VAEAlgorithm
+
+defaults:
+  - encoder: conv_encoder
+  - decoder: conv_decoder
+  - _self_
+
+encoder:
+  latent_dim: 128
+decoder:
+  latent_dim: ${experiment.model_algorithm.encoder.latent_dim}
+
+
+lr: 3e-4

@@ -8,8 +8,8 @@ n_envs: 1
 seed: ${seed}
 device: ${device}
 
-domain_name: hopper
-task_name: stand
+domain_name: walker
+task_name: run
 difficulty: 
 dynamic_model_path: 
 background_dataset_path: 

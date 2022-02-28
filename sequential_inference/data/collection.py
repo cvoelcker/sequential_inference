@@ -5,6 +5,7 @@ from sequential_inference.abc.common import Env
 from sequential_inference.abc.data import AbstractDataBuffer
 
 from sequential_inference.abc.rl import AbstractAgent
+from sequential_inference.log.logger import DataCheckpointing
 from sequential_inference.util.rl_util import run_agent_in_vec_environment
 from sequential_inference.data.storage import TrajectoryReplayBuffer
 
@@ -15,11 +16,16 @@ def gather_data(
     buffer: AbstractDataBuffer,
     steps: int,
     explore: bool = True,
+    checkpointer: Optional[DataCheckpointing] = None,
 ) -> Optional[Dict[str, torch.Tensor]]:
     if isinstance(buffer, TrajectoryReplayBuffer):
-        log = gather_trajectory_data(env, agent, buffer, steps, explore)
+        log = gather_trajectory_data(
+            env, agent, buffer, steps, explore, checkpointing=checkpointer
+        )
     elif isinstance(buffer, AbstractDataBuffer):
-        log = gather_sequential_data(env, agent, buffer, steps, explore)
+        log = gather_sequential_data(
+            env, agent, buffer, steps, explore, checkpointing=checkpointer
+        )
     else:
         raise NotImplementedError(
             f"Data gathering not implemented for this buffer {type(buffer)}"
@@ -33,6 +39,7 @@ def gather_sequential_data(
     buffer: AbstractDataBuffer,
     steps: int,
     explore: bool = True,
+    checkpointing: Optional[DataCheckpointing] = None,
 ) -> None:
     pass
 
@@ -43,6 +50,7 @@ def gather_trajectory_data(
     buffer: TrajectoryReplayBuffer,
     steps: int,
     explore: bool = True,
+    checkpointing: Optional[DataCheckpointing] = None,
 ) -> Dict[str, torch.Tensor]:
 
     trajectory_length = buffer.trajectory_length
@@ -100,6 +108,10 @@ def gather_trajectory_data(
             0,
         )
         buffer.insert({"obs": obs, "act": act, "rew": rew, "task": task, "done": done})
+        if checkpointing is not None:
+            checkpointing(
+                {"obs": obs, "act": act, "rew": rew, "task": task, "done": done}
+            )
     return {"average_reward": torch.stack(rewards).sum(1).mean().cpu().detach()}
 
 

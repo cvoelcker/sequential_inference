@@ -1,17 +1,22 @@
 # @package experiment.model_algorithm
 
-defaults:
-  - encoder: image_encoder
-  - decoder: broadcast_decoder
-
 _target_: sequential_inference.algorithms.env_models.dreamer.DreamerModelAlgorithm
+
+defaults:
+  - encoder: conv_encoder
+  - decoder: conv_decoder
+  - _self_
+
+encoder:
+  additional_channels: 1
+  return_scale: False
 
 action_dim: ${env.action_dim}
 kl_factor: 1.
 state_factor: 1.
 reward_factor: 1.
-feature_dim: 200
-latent_dim: 30
+feature_dim: 230
+latent_dim: 230
 recurrent_hidden_dim: 200
 belief_dim: 0
 hidden_units: [200, 200]

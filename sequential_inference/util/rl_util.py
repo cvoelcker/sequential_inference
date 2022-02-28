@@ -7,7 +7,7 @@ import numpy as np
 from sequential_inference.abc.common import Env
 
 from sequential_inference.abc.rl import AbstractAgent
-from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
+from sequential_inference.abc.sequence_model import AbstractLatentSequenceAlgorithm
 
 
 class Buffer:
@@ -87,6 +87,7 @@ def run_agent_in_vec_environment(
                 rewards.append(rew)
                 dones.append(done)
                 tasks.append(task)
+            rew = None
 
             last_obs = environment.reset()
 

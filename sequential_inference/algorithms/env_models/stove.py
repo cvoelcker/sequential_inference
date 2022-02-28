@@ -12,10 +12,10 @@ from torch.distributions import Normal
 
 from sequential_inference.nn_models.vae.image_vae import BroadcastVAE
 from sequential_inference.nn_models.dynamics.structured_dynamics import Dynamics
-from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
+from sequential_inference.abc.sequence_model import AbstractLatentSequenceAlgorithm
 
 
-class SequenceVAE(AbstractSequenceAlgorithm):
+class SequenceVAE(AbstractLatentSequenceAlgorithm):
     """STOVE: Structured object-aware video prediction model.
 
     This class combines a visual encoder and the dynamics model.

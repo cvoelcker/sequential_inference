@@ -251,7 +251,7 @@ class SLACLatentNetwork(AbstractLatentModel):
             leaky_slope=leaky_slope,
         )
 
-    def infer_prior(self, last_latent, action=None, global_belief=None):
+    def infer_prior(self, last_latent, action, global_belief=None):
         latent1_dist = self.latent1_prior(torch.cat([last_latent, action], -1))
         latent1_sample = latent1_dist.rsample()
         # p(z2(t) | z1(t), z2(t-1), a(t-1))
@@ -301,7 +301,7 @@ class PlaNetLatentNetwork(AbstractLatentModel):
     def __init__(
         self,
         action_dim,
-        feature_dim=[1],
+        feature_dim=64,
         latent_dim=32,
         recurrent_hidden_dim=32,
         belief_dim=0,
@@ -310,25 +310,33 @@ class PlaNetLatentNetwork(AbstractLatentModel):
     ):
         super().__init__()
 
+        self.feature_dim = feature_dim
         self.latent_dim = latent_dim
 
-        self.latent_init_prior = ConstantGaussian(latent_dim)
+        assert latent_dim > recurrent_hidden_dim
+
+        self.recurrent_hidden_dim = recurrent_hidden_dim
+        self.stochastic_dim = self.latent_dim - self.recurrent_hidden_dim
+
+        self.latent_init_prior = ConstantGaussian(self.stochastic_dim)
         self.rnn_init = ConstantGaussian(recurrent_hidden_dim, std=0.001)
 
         self.before_cell = create_mlp(
-            latent_dim + action_dim[0], recurrent_hidden_dim, hidden_units
+            self.stochastic_dim + action_dim[0], recurrent_hidden_dim, hidden_units
         )
         self.dynamics_cell = nn.GRUCell(recurrent_hidden_dim, recurrent_hidden_dim)
         self.prior = Gaussian(
-            recurrent_hidden_dim, latent_dim, hidden_units=hidden_units
+            recurrent_hidden_dim, self.stochastic_dim, hidden_units=hidden_units
         )
         self.posterior = Gaussian(
-            recurrent_hidden_dim + latent_dim, latent_dim, hidden_units=hidden_units
+            recurrent_hidden_dim + feature_dim,
+            self.stochastic_dim,
+            hidden_units=hidden_units,
         )
 
     def deter_encode(self, last_latent, action, global_belief=None):
-        rnn_state = last_latent[..., self.latent_dim :]
-        prev_state = last_latent[..., : self.latent_dim]
+        rnn_state = last_latent[..., self.stochastic_dim :]
+        prev_state = last_latent[..., : self.stochastic_dim]
         if global_belief is not None:
             x = torch.cat([prev_state, global_belief, action], dim=-1)
         else:

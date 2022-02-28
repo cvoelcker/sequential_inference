@@ -7,11 +7,11 @@ from sequential_inference.nn_models.base.network_util import calc_kl_divergence
 from sequential_inference.nn_models.dynamics.dynamics import SimpleLatentNetwork
 from sequential_inference.abc.sequence_model import (
     AbstractLatentModel,
-    AbstractSequenceAlgorithm,
+    AbstractLatentSequenceAlgorithm,
 )
 
 
-class VIModelAlgorithm(AbstractSequenceAlgorithm):
+class VIModelAlgorithm(AbstractLatentSequenceAlgorithm):
     def __init__(
         self,
         encoder: torch.nn.Module,
@@ -22,9 +22,10 @@ class VIModelAlgorithm(AbstractSequenceAlgorithm):
         kl_factor: float,
         state_factor: float,
         reward_factor: float,
+        free_nats=0.0,
         predict_from_prior: bool = False,
         condition_on_posterior: bool = False,
-        lr: float = 3e-4,
+        lr: float = 6e-4,
     ):
         super().__init__()
         self.latent = latent
@@ -42,6 +43,7 @@ class VIModelAlgorithm(AbstractSequenceAlgorithm):
         self.kl_factor = kl_factor
         self.state_factor = state_factor
         self.reward_factor = reward_factor
+        self.free_nats = free_nats
 
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
 
@@ -117,7 +119,7 @@ class VIModelAlgorithm(AbstractSequenceAlgorithm):
         # KL divergence loss.
         kld_loss = calc_kl_divergence(prior_dists, posterior_dists)
         kld_loss = (kld_loss * dones).sum(-1).mean()
-        loss += self.kl_factor * kld_loss
+        loss += self.kl_factor * torch.clamp(kld_loss, self.free_nats)
         stats["kld_loss"] = kld_loss.detach().cpu()
 
         # Log likelihood loss of generated observations.
@@ -171,7 +173,9 @@ class VIModelAlgorithm(AbstractSequenceAlgorithm):
         features = self.encoder(join_state_with_array(obs.unsqueeze(1), rewards))[:, 0]
         return self.latent(last_prior, last_latent, features, action=action)
 
-    def predict_latent_sequence(self, initial_latent, actions=None, reward=None):
+    def predict_latent_sequence(
+        self, initial_latent, actions=None, reward=None, full=False
+    ):
         prior_latent = initial_latent
         horizon = actions.shape[1]
 
@@ -180,7 +184,7 @@ class VIModelAlgorithm(AbstractSequenceAlgorithm):
             prior = self.latent.infer_prior(prior_latent, actions[:, t])
             prior_latent = prior[0]
             priors.append(prior)
-        return self.get_samples(priors)
+        return self.get_samples(priors, full=full)
 
     def predict_latent_step(self, latent, action, full=False):
         prior = self.latent.infer_prior(latent, action)

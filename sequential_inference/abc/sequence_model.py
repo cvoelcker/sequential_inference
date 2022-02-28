@@ -7,7 +7,7 @@ from torch.nn.parameter import Parameter
 from sequential_inference.abc.rl import AbstractAgent
 
 
-class AbstractSequenceAlgorithm(AbstractAlgorithm):
+class AbstractLatentSequenceAlgorithm(AbstractAlgorithm):
     latent: "AbstractLatentModel"
 
     @abc.abstractmethod
@@ -38,6 +38,7 @@ class AbstractSequenceAlgorithm(AbstractAlgorithm):
         initial_latent: torch.Tensor,
         actions: Optional[torch.Tensor] = None,
         reward: Optional[torch.Tensor] = None,
+        full: bool = False,
     ) -> torch.Tensor:
         raise NotImplementedError("Cannot instantiate AbstractSequenceModel")
 
@@ -54,7 +55,7 @@ class AbstractSequenceAlgorithm(AbstractAlgorithm):
     def get_samples(
         self,
         sample_list: List[Tuple[torch.Tensor, torch.distributions.Distribution]],
-        full: bool,
+        full: bool = False,
     ) -> torch.Tensor:
         pass
 

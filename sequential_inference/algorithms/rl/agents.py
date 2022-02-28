@@ -3,7 +3,7 @@ from gym import Space
 
 import torch
 
-from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
+from sequential_inference.abc.sequence_model import AbstractLatentSequenceAlgorithm
 from sequential_inference.abc.rl import AbstractAgent
 from sequential_inference.util.rl_util import join_state_with_array
 
@@ -106,7 +106,7 @@ class InferencePolicyAgent(AbstractAgent):
     def __init__(
         self,
         policy: AbstractAgent,
-        model: AbstractSequenceAlgorithm,
+        model: AbstractLatentSequenceAlgorithm,
         max_latent_size: Optional[int] = None,
     ):
         self.policy = policy

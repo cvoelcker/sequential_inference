@@ -4,9 +4,11 @@ import hydra
 from omegaconf import OmegaConf
 
 from sequential_inference.abc.data import Env
-from sequential_inference.abc.experiment import AbstractExperiment
 from sequential_inference.abc.util import AbstractLogger
 from sequential_inference.data.handler import AbstractDataHandler, setup_data
+from sequential_inference.experiments.base import AbstractTrainingExperiment
+from sequential_inference.util.setup import fix_env_config
+from sequential_inference.util.vector import vector_preface
 
 
 @hydra.main(config_path="../config", config_name="main")
@@ -18,7 +20,7 @@ def main(cfg):
     env: Env = hydra.utils.instantiate(cfg.env)
     cfg = fix_env_config(cfg, env)
     data: AbstractDataHandler = setup_data(cfg, env)
-    experiment: RLTrainingExperiment = hydra.utils.instantiate(cfg.experiment)
+    experiment: AbstractTrainingExperiment = hydra.utils.instantiate(cfg.experiment)
     experiment.to(cfg.device)
     experiment.summarize()
     logging: List[AbstractLogger] = hydra.utils.instantiate(cfg.logging)

@@ -1,0 +1,8 @@
+# @package experiment.model_algorithm.encoder
+
+_target_: sequential_inference.nn_models.vae.planet_vae.ConvEncoder
+
+depth: 32
+latent_dim: ${experiment.model_algorithm.feature_dim}
+shape: ${env.obs_dim}
+additional_channels: 0

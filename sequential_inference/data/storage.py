@@ -1,4 +1,3 @@
-import itertools
 from typing import Dict, Iterator
 
 import torch
@@ -35,9 +34,9 @@ class DataBuffer(AbstractDataBuffer):
 
         self.sample_length = sample_length
         self.capacity = capacity
-        self.length = 0
-        self.fill_counter = 0
-        self.full = False
+        self.length = torch.Tensor([0]).long()
+        self.fill_counter = torch.Tensor([0]).long()
+        self.full = torch.Tensor([False]).bool()
 
         self.register_module("s", self.s)  # type: ignore
         self.register_module("a", self.a)  # type: ignore
@@ -45,15 +44,19 @@ class DataBuffer(AbstractDataBuffer):
         self.register_module("d", self.d)  # type: ignore
         self.register_module("t", self.t)  # type: ignore
 
+        self.register_module("length", self.length)  # type: ignore
+        self.register_module("fill_counter", self.fill_counter)  # type: ignore
+        self.register_module("full", self.full)  # type: ignore
+
     def insert(self, trajectory):
-        traj_len = trajectory["obs"].shape[0]
+        traj_len: int = trajectory["obs"].shape[0]
 
         if self.fill_counter + traj_len > self.capacity:
-            self.full = True
+            self.full = torch.Tensor([True])
             self.length = self.fill_counter
-            self.fill_counter = 0
+            self.fill_counter = torch.Tensor([0])
         else:
-            self.length = self.length + traj_len
+            self.length += traj_len
 
         self.s[self.fill_counter : self.fill_counter + traj_len] = (
             trajectory["obs"].detach().to("cpu")
@@ -82,7 +85,7 @@ class DataBuffer(AbstractDataBuffer):
         return dict(obs=s, act=a, rew=r, next_obs=s_n, done=d)
 
     def __len__(self):
-        return min(self.length - self.sample_length, 0)
+        return int(min((self.length.item() - self.sample_length), 0))
 
 
 class TrajectoryReplayBuffer(AbstractDataBuffer):
@@ -128,19 +131,13 @@ class TrajectoryReplayBuffer(AbstractDataBuffer):
         self.trajectory_length = trajectory_length
         self.sample_length = sample_length
         self.capacity = num_trajectories
-        self.fill_counter = 0
-        self.full = False
-
-        print(self.state_dict())
-
-        self.register_module("s", self.s)  # type: ignore
-        self.register_module("a", self.a)  # type: ignore
-        self.register_module("r", self.r)  # type: ignore
-        self.register_module("d", self.d)  # type: ignore
-        self.register_module("t", self.t)  # type: ignore
+        self.fill_counter = torch.Tensor([0]).long()
+        self.full = torch.Tensor([False]).bool()
 
     def insert(self, trajectory):
-        self.s[self.fill_counter] = trajectory["obs"].to("cpu").detach()
+        self.s[self.fill_counter] = (
+            trajectory["obs"].to("cpu").detach().to(self.s.dtype)
+        )
         self.a[self.fill_counter] = trajectory["act"].to("cpu").detach()
         self.r[self.fill_counter] = trajectory["rew"].to("cpu").detach()
         self.d[self.fill_counter] = trajectory["done"].to("cpu").detach()
@@ -148,14 +145,8 @@ class TrajectoryReplayBuffer(AbstractDataBuffer):
 
         self.fill_counter += 1
         if self.fill_counter == self.capacity:
-            self.full = True
-            self.fill_counter = 0
-
-        self.length = (
-            self.capacity * (self.trajectory_length - self.sample_length - 1)
-            if self.full
-            else self.fill_counter * (self.trajectory_length - self.sample_length - 1)
-        )
+            self.full = torch.Tensor([True]).bool()
+            self.fill_counter = torch.Tensor([0]).long()
 
     def __getitem__(self, k):
         t = k // (self.trajectory_length - self.sample_length - 1)
@@ -176,29 +167,11 @@ class TrajectoryReplayBuffer(AbstractDataBuffer):
         return dict(obs=s, act=a, rew=r, next_obs=s_n, done=d)
 
     def __len__(self):
-        return self.length
-
-
-# class BatchDataSampler(AbstractDataSampler):
-#     """The BatchDataSampler iterates infinitely over a given dataset. It models the behavior of many RL algorithms that do not sample full batches.
-#     To provide flexible batch sizes with minimal overhead, it holds a set of iterators for different batch sizes as "views" on the data.
-#     """
-#
-#     def __init__(self, buffer: AbstractDataBuffer):
-#         self.buffer = buffer
-#
-#         self.iterators: Dict[int, Iterator[Dict[str, torch.Tensor]]] = {}
-#
-#     def _make_iterator(self, batch_size: int):
-#         _dataloader = torch.utils.data.DataLoader(  # type: ignore
-#             self.buffer, batch_size=batch_size, drop_last=True, shuffle=True
-#         )
-#         self.iterators[batch_size] = itertools.cycle(iter(_dataloader))
-#
-#     def get_next(self, batch_size: int):
-#         if batch_size not in self.iterators.keys():
-#             self._make_iterator(batch_size)
-#         return self.iterators[batch_size].__next__()
+        return int(
+            self.capacity * (self.trajectory_length - self.sample_length - 1)
+            if self.full
+            else self.fill_counter * (self.trajectory_length - self.sample_length - 1)
+        )
 
 
 class BatchDataSampler(AbstractDataSampler):

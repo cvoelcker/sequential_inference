@@ -20,6 +20,7 @@ class DreamerModelAlgorithm(VIModelAlgorithm):
         belief_dim=0,
         hidden_units=[64, 64],
         leaky_slope=0.2,
+        free_nats=3.0,
         predict_from_prior=False,
         condition_on_posterior=False,
     ):
@@ -43,6 +44,7 @@ class DreamerModelAlgorithm(VIModelAlgorithm):
             kl_factor,
             state_factor,
             reward_factor,
+            free_nats=3,
             predict_from_prior=predict_from_prior,
             condition_on_posterior=condition_on_posterior,
         )
@@ -54,7 +56,8 @@ class DreamerModelAlgorithm(VIModelAlgorithm):
             latent_.append(l[0])
 
         latent = torch.stack(latent_, 1)
-        if full:
-            return latent
-        else:
-            return latent[..., : self.latent_dim]
+        # if full:
+        #     return latent
+        # else:
+        #     return latent[..., : self.latent_dim]
+        return latent

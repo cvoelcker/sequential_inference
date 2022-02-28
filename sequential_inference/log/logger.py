@@ -3,11 +3,11 @@ import shutil
 import os
 import pickle
 from collections import defaultdict
+from typing import Dict, Iterator, Optional
 import torch
 from torch.utils.tensorboard.writer import SummaryWriter
 from sequential_inference.abc.common import Checkpointable
 
-from sequential_inference.abc.experiment import AbstractExperiment
 from sequential_inference.abc.util import AbstractLogger
 
 
@@ -196,9 +196,9 @@ class Checkpointing:
     def __call__(self, checkpointable: Checkpointable):
         to_save = checkpointable.state_dict()
         if self.overwrite:
-            path = os.path.join(self.chp_dir, f"save.torch")
+            path = os.path.join(self.chp_dir, f"save.pt")
         else:
-            path = os.path.join(self.chp_dir, f"{self.counter:06d}.torch")
+            path = os.path.join(self.chp_dir, f"{self.counter:06d}.pt")
         self.counter += 1
         torch.save(to_save, path)
         return {}
@@ -213,3 +213,23 @@ class Checkpointing:
     def get_num_saved(self) -> int:
         all_checkpoints = sorted(os.listdir(self.chp_dir))
         return len(all_checkpoints)
+
+
+class DataCheckpointing(Checkpointing):
+    def __init__(self, chp_dir=".", chp_name="data", overwrite=False):
+        super().__init__(chp_dir, chp_name, overwrite)
+
+    def __call__(self, checkpointable: Dict[str, torch.Tensor]):
+        to_save = checkpointable
+        path = os.path.join(self.chp_dir, f"data_{self.counter:06d}.pt")
+        self.counter += 1
+        torch.save(to_save, path)
+        return {}
+
+    def load_all(self, path: Optional[str] = None) -> Iterator[Dict[str, torch.Tensor]]:
+        if path is None:
+            path = self.chp_dir
+        all_checkpoints = sorted(os.listdir(path))
+        for checkpoint in all_checkpoints:
+            path = os.path.join(self.chp_dir, checkpoint)
+            yield torch.load(path)

@@ -1,12 +1,14 @@
 defaults:
   - env: visual_dm_control
   - data: online
-  - experiment: dreamer_experiment
+  - experiment: vae_experiment
   - _self_
 
 data:
-  buffer_num_trajectories: 1000
+  buffer_num_trajectories: 100
   buffer_trajectory_length: 1000
+  sample_length: 2
+  n_init: 1000
 
 env:
   obs_dim: 0
@@ -18,8 +20,9 @@ env:
 
 experiment:
   epochs: 1000
-  epoch_steps: 5
-  evaluation_interval: 1
+  epoch_steps: 1000
+
+ 
 
 logging:
   _target_: sequential_inference.util.setup.hydra_make_list
@@ -36,13 +39,13 @@ logging:
   file_epoch:
     _target_: sequential_inference.log.logger.CsvLogger
     log_dir: "${chp_dir}/raw_logs"
-    name: "epoch"
-    keys: [epoch]
+    name: "log"
+    keys: [log]
   file_eval:
     _target_: sequential_inference.log.logger.CsvLogger
     log_dir: "${chp_dir}/raw_logs"
-    name: "eval"
-    keys: [eval]
+    name: "epoch"
+    keys: [epoch]
 
 cluster: local
 chp_dir: .

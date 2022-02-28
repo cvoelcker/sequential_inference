@@ -29,9 +29,9 @@ class PyTorchWrapper(Env):
                 low=0,
                 high=255,
                 shape=(
-                    self.observation_space.shape[2],
-                    self.observation_space.shape[0],
-                    self.observation_space.shape[1],
+                    self.observation_space.shape[2],  # type: ignore
+                    self.observation_space.shape[0],  # type: ignore
+                    self.observation_space.shape[1],  # type: ignore
                 ),
                 dtype=np.uint8,
             )
@@ -82,7 +82,7 @@ class PyTorchWrapper(Env):
     def render(self, mode="human"):
         self.env.render(mode=mode)
 
-    def reset_task(self, task_id: Union[Sequence[int], int]):
+    def reset_task(self, task_id: Union[List[int], int]):
         if isinstance(self.env, MetaworldWrapper):
             self.env.reset_task(task_id)
         else:

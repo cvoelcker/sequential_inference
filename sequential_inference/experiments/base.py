@@ -7,7 +7,7 @@ from tqdm import tqdm
 import torch
 
 from sequential_inference.abc.experiment import AbstractExperiment, AbstractRLExperiment
-from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
+from sequential_inference.abc.sequence_model import AbstractLatentSequenceAlgorithm
 from sequential_inference.abc.rl import AbstractRLAlgorithm
 from sequential_inference.log.logger import Checkpointing
 from sequential_inference.util.errors import NotInitializedException
@@ -18,12 +18,21 @@ class AbstractTrainingExperiment(AbstractExperiment):
     is_rl: bool = False
     is_model: bool = False
 
-    def __init__(self, epoch_steps: int, epochs: int, log_interval: int):
+    def __init__(
+        self,
+        epoch_steps: int,
+        epochs: int,
+        log_interval: int,
+        checkpoint_interval: int,
+        evaluation_interval: int,
+    ):
         super().__init__()
         self.checkpointing: Optional[Checkpointing] = None
         self.epoch_steps = epoch_steps
         self.epochs = epochs
         self.log_interval = log_interval
+        self.checkpoint_interval = checkpoint_interval
+        self.evaluation_interval = evaluation_interval
 
     def run(self, status: Dict[str, str]):
         self.train(int(status["epoch_number"]))
@@ -43,7 +52,8 @@ class AbstractTrainingExperiment(AbstractExperiment):
                     self.notify_observers("log", stats, total_train_steps)
             epoch_log = self.after_epoch({})
             self.notify_observers("epoch", epoch_log, total_train_steps)
-            self.checkpoint()
+            if e % self.checkpoint_interval == 0:
+                self.checkpoint()
         self.close_observers()
 
     def after_epoch(self, d):
@@ -74,14 +84,11 @@ class AbstractTrainingExperiment(AbstractExperiment):
                 pickle.dump(
                     {
                         "status": "training",
-                        "epoch_number": self.epoch + 1,
+                        "epoch_number": self.epoch + self.checkpoint_interval,
                     },
                     f,
                 )
             self.checkpointing(self)
-        if self.data is not None and self.data_checkpointing is not None:
-            print("Checkpointing data")
-            self.data_checkpointing(self.data.buffer)
 
 
 class RLTrainingExperiment(AbstractRLExperiment, AbstractTrainingExperiment):
@@ -97,8 +104,12 @@ class RLTrainingExperiment(AbstractRLExperiment, AbstractTrainingExperiment):
         rl_algorithm: AbstractRLAlgorithm,
         batch_size: int = 32,
         log_interval: int = 10,
+        checkpoint_interval: int = 10,
+        evaluation_interval: int = 10,
     ):
-        super().__init__(epoch_steps, epochs, log_interval)
+        super().__init__(
+            epoch_steps, epochs, log_interval, checkpoint_interval, evaluation_interval
+        )
 
         self.rl_algorithm = rl_algorithm
         self._step_rl = self.rl_algorithm.get_step()
@@ -132,7 +143,7 @@ class RLTrainingExperiment(AbstractRLExperiment, AbstractTrainingExperiment):
 
 class ModelTrainingExperiment(AbstractTrainingExperiment):
 
-    model_algorithm: AbstractSequenceAlgorithm
+    model_algorithm: AbstractLatentSequenceAlgorithm
 
     is_model = True
 
@@ -140,11 +151,15 @@ class ModelTrainingExperiment(AbstractTrainingExperiment):
         self,
         epoch_steps: int,
         epochs: int,
-        model_algorithm: AbstractSequenceAlgorithm,
+        model_algorithm: AbstractLatentSequenceAlgorithm,
         batch_size: int = 32,
         log_interval: int = 10,
+        checkpoint_interval: int = 10,
+        evaluation_interval: int = 10,
     ):
-        super().__init__(epoch_steps, epochs, log_interval)
+        super().__init__(
+            epoch_steps, epochs, log_interval, checkpoint_interval, evaluation_interval
+        )
         self.model_algorithm = model_algorithm
         self._model_step = self.model_algorithm.get_step()
         self.batch_size = batch_size
@@ -166,7 +181,7 @@ class ModelTrainingExperiment(AbstractTrainingExperiment):
 
 class ModelBasedRLTrainingExperiment(AbstractTrainingExperiment, abc.ABC):
 
-    model_algorithm: AbstractSequenceAlgorithm
+    model_algorithm: AbstractLatentSequenceAlgorithm
     rl_algorithm: AbstractRLAlgorithm
 
     is_model = True
@@ -176,13 +191,17 @@ class ModelBasedRLTrainingExperiment(AbstractTrainingExperiment, abc.ABC):
         self,
         epoch_steps: int,
         epochs: int,
-        model_algorithm: AbstractSequenceAlgorithm,
+        model_algorithm: AbstractLatentSequenceAlgorithm,
         rl_algorithm: AbstractRLAlgorithm,
         model_batch_size: int = 32,
         rl_batch_size: int = 32,
         log_interval: int = 10,
+        checkpoint_interval: int = 10,
+        evaluation_interval: int = 10,
     ):
-        super().__init__(epoch_steps, epochs, log_interval)
+        super().__init__(
+            epoch_steps, epochs, log_interval, checkpoint_interval, evaluation_interval
+        )
         self.model_algorithm = model_algorithm
         self._step_model = self.model_algorithm.get_step()
         self.model_batch_size = model_batch_size

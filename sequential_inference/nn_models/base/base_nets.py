@@ -275,7 +275,7 @@ class Gaussian(nn.Module):
             std = torch.ones_like(mean) * self.std
         else:
             mean, std = torch.chunk(x, 2, dim=-1)
-            std = F.softplus(std) + 1e-5
+            std = F.softplus(std - 5.0) + 1e-5
 
         return dists.Normal(loc=mean, scale=std)
 
@@ -296,7 +296,6 @@ class TanhGaussian(Gaussian):
             2 * output_dim[-1] if std is None else output_dim,
             hidden_units,
         )
-
         self.std = std
         self.multiplier = torch.Tensor([multiplier])
 
@@ -306,8 +305,8 @@ class TanhGaussian(Gaussian):
             mean = x
             std = torch.ones_like(mean) * self.std
         else:
-            mean, std = torch.chunk(x, 2, dim=-1)
-            std = F.softplus(std) + 1e-5
+            mean, log_std = torch.chunk(x, 2, dim=-1)
+            std = torch.exp(log_std) + 1e-5
 
         return TanhNormal(mean=mean, std=std, multiplier=self.multiplier)
 
@@ -332,8 +331,8 @@ class OffsetGaussian(nn.Module):
             mean = x
             std = torch.ones_like(mean) * self.std
         else:
-            mean, std = torch.chunk(x, 2, dim=-1)
-            std = F.softplus(std) + 1e-5
+            mean, log_std = torch.chunk(x, 2, dim=-1)
+            std = torch.exp(log_std) + 1e-5
         offset = inp[..., : self.output_dim]
         return dists.Normal(loc=mean + offset, scale=std)
 

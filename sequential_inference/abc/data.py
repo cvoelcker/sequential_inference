@@ -1,19 +1,21 @@
 import abc
-from typing import Dict
+from typing import Dict, Sized
 
 import torch
 from torch.utils.data import Dataset
 
 from sequential_inference.abc.common import (
-    Checkpointable,
     Env,
-    Saveable,
     TorchContainer,
 )
+from sequential_inference.abc.rl import AbstractAgent
 
 
-class AbstractDataBuffer(Dataset, TorchContainer):
-    pass
+class AbstractDataBuffer(Dataset, TorchContainer, Sized):
+    sample_length: int
+
+    def insert(self, **kwargs: Dict[str, torch.Tensor]) -> None:
+        pass
 
 
 class AbstractDataHandler(abc.ABC):
@@ -37,7 +39,12 @@ class AbstractDataHandler(abc.ABC):
     def initialize(self, cfg, preempted: bool):
         pass
 
-    def update(self, log, agent, **kwargs):
+    def load(self, path: str) -> None:
+        pass
+
+    def update(
+        self, log: Dict[str, torch.Tensor], agent: AbstractAgent, **kwargs
+    ) -> Dict[str, torch.Tensor]:
         return log
 
 

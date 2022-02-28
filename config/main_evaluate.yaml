@@ -1,0 +1,15 @@
+load_dir: /h/voelcker/Code/project_codebases/sequential_inference/outputs/2022-02-26/11-21-54/
+
+cluster: local
+chp_dir: .
+device: cpu
+
+evaluators:
+  _target_: sequential_inference.util.setup.hydra_make_list
+  model_vis:
+    _target_: sequential_inference.evaluation.model_visualization.LatentModelReconstructionEvaluator
+    save_path: .
+    save_name: model_rollouts
+    batch_size: 16
+    inference_steps: 20
+    prediction_steps: 20

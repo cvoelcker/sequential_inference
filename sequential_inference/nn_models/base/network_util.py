@@ -29,9 +29,11 @@ def alternate_inverse(theta):
 def invert(x, theta, image_shape, padding="zeros"):
     inverse_theta = alternate_inverse(theta)
     if x.size()[1] == 1:
-        size = torch.Size((x.size()[0], 1, *image_shape))
+        size = [x.size()[0], 1, *image_shape]
     elif x.size()[1] == 3:
-        size = torch.Size((x.size()[0], 3, *image_shape))
+        size = [x.size()[0], 3, *image_shape]
+    else:
+        raise ValueError("invalid tensor shape")
     grid = F.affine_grid(inverse_theta, size)
     x = F.grid_sample(x, grid, padding_mode=padding)
 
@@ -41,14 +43,14 @@ def invert(x, theta, image_shape, padding="zeros"):
 def differentiable_sampling(mean, sigma, prior_sigma, samples=1):
     dist = dists.Normal(mean, sigma)
     dist_0 = dists.Normal(0.0, prior_sigma)
-    z = dist.rsample((samples,))
+    z = dist.rsample((samples,))  # type: ignore
     kl_z = dists.kl_divergence(dist, dist_0)
     return z, torch.sum(kl_z, -1)
 
 
 def calc_kl_divergence(
-    p_list: List[torch.distributions.distribution.Distribution],
-    q_list: List[torch.distributions.distribution.Distribution],
+    p_list: List[torch.distributions.Distribution],
+    q_list: List[torch.distributions.Distribution],
 ) -> torch.Tensor:
     assert len(p_list) == len(q_list)
     kld = []
@@ -89,6 +91,15 @@ def center_of_mass(mask, device="cuda"):
     return torch.stack(
         [torch.sum(mask * grids[d], [-2, -1]) / norm for d in range(2)], -1
     )
+
+
+class Reshape(nn.Module):
+    def __init__(self, shape):
+        super().__init__()
+        self.shape = shape
+
+    def forward(self, x):
+        return x.view(self.shape)
 
 
 # Modified from https://github.com/juliusfrost/dreamer-pytorch

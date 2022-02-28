@@ -2,7 +2,7 @@ from typing import Dict
 
 import torch
 from sequential_inference.abc.data import Env
-from sequential_inference.abc.sequence_model import AbstractSequenceAlgorithm
+from sequential_inference.abc.sequence_model import AbstractLatentSequenceAlgorithm
 from sequential_inference.algorithms.rl.dreamer import DreamerRLAlgorithm
 
 from sequential_inference.experiments.base import ModelBasedRLTrainingExperiment
@@ -20,11 +20,13 @@ class DreamerExperiment(ModelBasedRLTrainingExperiment):
         horizon: bool,
         epoch_steps: int,
         epochs: int,
-        model_algorithm: AbstractSequenceAlgorithm,
+        model_algorithm: AbstractLatentSequenceAlgorithm,
         rl_algorithm: DreamerRLAlgorithm,
         model_batch_size: int = 32,
         rl_batch_size: int = 32,
         log_interval: int = 100,
+        checkpoint_interval: int = 50,
+        evaluation_interval: int = 10,
     ):
         assert isinstance(
             rl_algorithm, DreamerRLAlgorithm
@@ -37,6 +39,8 @@ class DreamerExperiment(ModelBasedRLTrainingExperiment):
             model_batch_size=model_batch_size,
             rl_batch_size=rl_batch_size,
             log_interval=log_interval,
+            checkpoint_interval=checkpoint_interval,
+            evaluation_interval=evaluation_interval,
         )
 
         self.horizon = horizon
