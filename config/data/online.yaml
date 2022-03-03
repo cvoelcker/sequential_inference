@@ -3,10 +3,10 @@
 name: online
 init_data_source: random
 
-buffer_num_trajectories: 10000
-buffer_trajectory_length: 1000
+buffer_num_trajectories: 20000
+buffer_trajectory_length: 500
 sample_length: 16
 force_random: false
 
 n_init: 5000
-n: 1000
+n: 500

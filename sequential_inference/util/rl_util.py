@@ -35,11 +35,11 @@ class Buffer:
         self.task.append(task)
 
     def empty(self) -> Iterator[Tuple[torch.Tensor, ...]]:
-        o = torch.stack(self.obs, 1)
-        a = torch.stack(self.act, 1)
-        r = torch.stack(self.rew, 1)
-        d = torch.stack(self.done, 1)
-        t = torch.stack(self.task, 1)
+        o = torch.stack(self.obs, 1).to(self.obs[0].dtype)
+        a = torch.stack(self.act, 1).to(self.act[0].dtype)
+        r = torch.stack(self.rew, 1).to(self.rew[0].dtype)
+        d = torch.stack(self.done, 1).to(self.done[0].dtype)
+        t = torch.stack(self.task, 1).to(self.task[0].dtype)
         self.obs = []
         self.act = []
         self.rew = []
@@ -71,7 +71,7 @@ def run_agent_in_vec_environment(
 
     policy.reset()
     for i in tqdm(range(steps)):
-        action = policy.act(last_obs, reward, explore=explore)
+        action = policy.act(normalize(last_obs), reward, explore=explore)
         next_obs, reward, done, info = environment.step(action)
         buffer.add(last_obs, action, reward, done, info["task"])
 
@@ -106,6 +106,13 @@ def join_state_with_array(state: torch.Tensor, action: torch.Tensor) -> torch.Te
         return inp
     else:
         return torch.cat((state, action), -1)
+
+
+def normalize(x: torch.Tensor) -> torch.Tensor:
+    if x.dtype == torch.uint8:
+        return x.float() / 255.0
+    else:
+        return x
 
 
 def load_agent(path: str):

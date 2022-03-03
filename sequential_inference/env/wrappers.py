@@ -55,29 +55,32 @@ class PyTorchWrapper(Env):
             info["task"] = torch.zeros((self.num_envs, 1), dtype=torch.int64).to(
                 self.device
             )
+
         if self.vec_env:
-            return (
-                to_torch(obs).to(self.device),
-                to_torch(reward).to(self.device),
-                to_torch(done).to(self.device),
-                info,
-            )
+            obs = to_torch(obs).to(self.device)
+            reward = to_torch(reward).to(self.device)
+            done = to_torch(done).to(self.device)
         else:
-            return (
-                expand_dim(to_torch(obs)).to(self.device),
-                expand_dim(torch.Tensor([reward])).to(self.device),
-                expand_dim(torch.Tensor([done])).to(self.device),
-                info,
-            )
+            obs = expand_dim(to_torch(obs)).to(self.device)
+            reward = expand_dim(torch.Tensor([reward])).to(self.device)
+            done = expand_dim(torch.Tensor([done])).to(self.device)
+        if self.is_3d_observation:
+            obs = obs.to(torch.uint8)
+        reward = reward.float()
+        done = done.bool()
+        return (obs, reward, done, info)
 
     def reset(self) -> torch.Tensor:
         obs = self.env.reset()
         if self.is_3d_observation:
-            obs = wrap_3d_obs(obs)
-        if self.vec_env:
-            return to_torch(obs).to(self.device)
+            obs = to_torch(wrap_3d_obs(obs))
+            obs = obs.to(torch.uint8)
         else:
-            return expand_dim(to_torch(obs)).to(self.device)
+            obs = to_torch(obs)
+        if self.vec_env:
+            return obs.to(self.device)
+        else:
+            return expand_dim(obs).to(self.device)
 
     def render(self, mode="human"):
         self.env.render(mode=mode)

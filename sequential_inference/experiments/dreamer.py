@@ -84,7 +84,7 @@ class DreamerExperiment(ModelBasedRLTrainingExperiment):
                 explore=True,
             )
 
-            obs = self.model_algorithm.get_samples([[latents[:, -1:].detach()]])
+            obs = self.model_algorithm.get_samples([[latents[:, -1:]]])
             next_obs = predicted_latents[:, 1:]
             rewards = predicted_rewards
 

@@ -39,7 +39,7 @@ def create_conv_layers(
 
     for layer in layer_sizes:
         layers.append(nn.Conv2d(input_size, layer, kernel_size, padding=padding))
-        layers.append(nn.ReLU(inplace=True))
+        layers.append(nn.ELU(inplace=True))
         if max_pool:
             layers.append(nn.MaxPool2d(2, stride=2))
         input_size = layer
@@ -68,7 +68,7 @@ def create_mlp(
 
     for layer in layer_sizes:
         layers.append(nn.Linear(input_size, layer))
-        layers.append(nn.SiLU(inplace=True))
+        layers.append(nn.ELU(inplace=True))
         input_size = layer
     layers.append(nn.Linear(input_size, output_size))
 

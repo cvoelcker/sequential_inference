@@ -232,4 +232,5 @@ class DataCheckpointing(Checkpointing):
         all_checkpoints = sorted(os.listdir(path))
         for checkpoint in all_checkpoints:
             path = os.path.join(self.chp_dir, checkpoint)
+            self.counter += 1
             yield torch.load(path)

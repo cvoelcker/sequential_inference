@@ -74,21 +74,21 @@ def gather_trajectory_data(
                 torch.zeros(trajectory_length - obs_len, *obs.shape[1:]).to(obs.device),
             ],
             0,
-        )
+        ).to(obs.dtype)
         act = torch.cat(
             [
                 act,
                 torch.zeros(trajectory_length - act_len, *act.shape[1:]).to(obs.device),
             ],
             0,
-        )
+        ).to(act.dtype)
         rew = torch.cat(
             [
                 rew,
                 torch.zeros(trajectory_length - rew_len, *rew.shape[1:]).to(obs.device),
             ],
             0,
-        )
+        ).to(rew.dtype)
         done = torch.cat(
             [
                 done,
@@ -97,7 +97,7 @@ def gather_trajectory_data(
                 ),
             ],
             0,
-        )
+        ).to(done.dtype)
         task = torch.cat(
             [
                 task,
@@ -106,7 +106,7 @@ def gather_trajectory_data(
                 ),
             ],
             0,
-        )
+        ).to(task.dtype)
         buffer.insert({"obs": obs, "act": act, "rew": rew, "task": task, "done": done})
         if checkpointing is not None:
             checkpointing(

@@ -138,10 +138,18 @@ class TrajectoryReplayBuffer(AbstractDataBuffer):
         self.s[self.fill_counter] = (
             trajectory["obs"].to("cpu").detach().to(self.s.dtype)
         )
-        self.a[self.fill_counter] = trajectory["act"].to("cpu").detach()
-        self.r[self.fill_counter] = trajectory["rew"].to("cpu").detach()
-        self.d[self.fill_counter] = trajectory["done"].to("cpu").detach()
-        self.t[self.fill_counter] = trajectory["task"].to("cpu").detach()
+        self.a[self.fill_counter] = (
+            trajectory["act"].to(self.a.dtype).to("cpu").detach()
+        )
+        self.r[self.fill_counter] = (
+            trajectory["rew"].to(self.r.dtype).to("cpu").detach()
+        )
+        self.d[self.fill_counter] = (
+            trajectory["done"].to(self.d.dtype).to("cpu").detach()
+        )
+        self.t[self.fill_counter] = (
+            trajectory["task"].to(self.t.dtype).to("cpu").detach()
+        )
 
         self.fill_counter += 1
         if self.fill_counter == self.capacity:

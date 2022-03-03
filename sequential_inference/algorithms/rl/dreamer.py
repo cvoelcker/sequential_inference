@@ -11,6 +11,7 @@ from sequential_inference.algorithms.rl.agents import (
     InferencePolicyAgent,
     PolicyNetworkAgent,
 )
+from sequential_inference.util.torch import exponential_moving_matrix
 
 
 class DreamerRLAlgorithm(AbstractRLAlgorithm):
@@ -38,12 +39,12 @@ class DreamerRLAlgorithm(AbstractRLAlgorithm):
         self.actor_optimizer = Adam(self.actor.parameters(), lr=actor_lr)
         self.critic_optimizer = Adam(self.value.parameters(), lr=critic_lr)
 
-        self.lambda_discount = lambda_discount
-        self.horizon_discount = self.lambda_discount ** torch.arange(horizon).to(
-            self.device
-        )
-        self.gamma_discount = gamma_discount
-        self.discount = self.gamma_discount ** torch.arange(horizon).to(self.device)
+        self.lambda_ = lambda_discount
+        self.gamma_ = gamma_discount
+
+        self.horizon_discount = self.lambda_ ** torch.arange(horizon).to(self.device)
+        self.discount = self.gamma_ ** torch.arange(horizon).to(self.device)
+
         self.horizon = horizon
 
         self.register_module("actor", actor)
@@ -69,30 +70,38 @@ class DreamerRLAlgorithm(AbstractRLAlgorithm):
 
         batch_size = obs.shape[0]
 
-        # predict values
-        predicted_values = self.value(next_obs)
-        values = self.value(obs)
+        # regression output
+        latents = torch.cat([obs.squeeze(1), next_obs[:, :-1]], dim=1)
+        values = self.value(latents.detach()).view(batch_size, self.horizon)
 
-        # create the weighted prediction matrices
-        predicted_values = (
-            predicted_values.view(batch_size, self.horizon) * self.discount
+        # regression targets
+        targets = []
+        predicted_values = self.value(next_obs).view(batch_size, self.horizon)
+        rewards = rewards.view(batch_size, self.horizon)
+        pv = (predicted_values * self.discount) * self.gamma_
+        pr = (rewards * self.discount).cumsum(dim=1)
+        targets.append(
+            (1 - self.lambda_) * torch.sum((pv + pr) * self.horizon_discount, -1)
         )
-        rewards = rewards.view(batch_size, self.horizon) * self.discount
-        cumulative_predicted_rewards = torch.cumsum(rewards, dim=1)  # type: ignore
-        cumulative_predicted_rewards + predicted_values
-        target = (1 - self.lambda_discount) * (cumulative_predicted_rewards * self.horizon_discount).sum(-1).detach()
+        for i in range(1, self.horizon):
+            pv = (predicted_values[:, i:] * self.discount[:-i]) * self.gamma_
+            pr = (rewards[:, i:] * self.discount[:-i]).cumsum(dim=1)
+            targets.append(
+                (1 - self.lambda_)
+                * torch.sum((pv + pr) * self.horizon_discount[:-i], -1)
+            )
+        targets = torch.stack(targets, dim=1)
 
         # value loss
-        value_loss = torch.mean((target - values) ** 2)
+        value_loss = torch.mean((targets.detach() - values) ** 2)
 
         # action loss
-        action_loss = -torch.mean(
-            torch.sum(rewards, -1) + predicted_values[:, -1]  # type: ignore
-        )
+        action_loss = -torch.mean(targets)
 
         return (value_loss, action_loss), {
             "action_loss": action_loss.detach(),
             "value_loss": value_loss.detach(),
+            "average_value": torch.mean(values).detach(),
         }
 
     def get_step(self) -> Callable[[Tuple, Dict], Dict]:

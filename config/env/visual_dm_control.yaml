@@ -8,7 +8,7 @@ n_envs: 1
 seed: ${seed}
 device: ${device}
 
-domain_name: walker
+domain_name: cheetah
 task_name: run
 difficulty: 
 dynamic_model_path: 
@@ -19,10 +19,10 @@ camera_kwargs:
 render_kwargs: 
 pixels_only: True
 pixels_observation_key: 
-height: 32
-width: 32
+height: 64
+width: 64
 camera_id: 0
-frame_skip: 1
+frame_skip: 2
 environment_kwargs: 
 episode_length: 1000
 time_limit: 
