@@ -13,3 +13,8 @@ evaluators:
     batch_size: 16
     inference_steps: 20
     prediction_steps: 20
+  rl_video:
+    _target_: sequential_inference.evaluation.model_visualization.VideoRLEvaluator
+    save_path: .
+    save_name: rl_video
+    environment_steps: 2000

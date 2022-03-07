@@ -3,7 +3,7 @@
 name: online
 init_data_source: random
 
-buffer_num_trajectories: 20000
+buffer_num_trajectories: 2000
 buffer_trajectory_length: 500
 sample_length: 16
 force_random: false

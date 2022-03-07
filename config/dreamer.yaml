@@ -4,10 +4,6 @@ defaults:
   - experiment: dreamer_experiment
   - _self_
 
-data:
-  buffer_num_trajectories: 1000
-  buffer_trajectory_length: 1000
-
 env:
   obs_dim: 0
   obs_action_dim: 0

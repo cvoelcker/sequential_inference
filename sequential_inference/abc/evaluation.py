@@ -3,6 +3,7 @@ from typing import Dict
 from enum import Enum
 
 import torch
+from sequential_inference.abc.common import Env
 
 from sequential_inference.abc.data import AbstractDataBuffer
 from sequential_inference.abc.experiment import AbstractExperiment
@@ -44,4 +45,15 @@ class AbstractModelVisualizer(abc.ABC):
         inference_steps: int,
         prediction_steps: int,
     ) -> Dict[str, torch.Tensor]:
+        pass
+
+
+class AbstractRLVisualizer(abc.ABC):
+    @abc.abstractmethod
+    def visualize_rl_agent(
+        self,
+        environment: Env,
+        agent: AbstractAgent,
+        evaluation_steps: int,
+    ) -> torch.Tensor:
         pass

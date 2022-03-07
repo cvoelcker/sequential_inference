@@ -2,20 +2,58 @@ import os
 from typing import Dict, Union
 
 import torch
+import torchvision
 from torchvision.utils import save_image
+from sequential_inference.abc.common import Env
 
 from sequential_inference.abc.data import AbstractDataBuffer
+from sequential_inference.abc.experiment import AbstractExperiment
 from sequential_inference.abc.rl import AbstractAgent
 from sequential_inference.abc.sequence_model import AbstractLatentSequenceAlgorithm
 from sequential_inference.abc.evaluation import (
     AbstractEvaluator,
     AbstractModelVisualizer,
+    AbstractRLVisualizer,
 )
+from sequential_inference.data.collection import gather_data
 from sequential_inference.data.storage import BatchDataSampler, TrajectoryReplayBuffer
 from sequential_inference.experiments.base import (
     ModelBasedRLTrainingExperiment,
     ModelTrainingExperiment,
 )
+from sequential_inference.util.rl_util import run_agent_in_vec_environment
+
+
+class VideoRLEvaluator(AbstractEvaluator):
+    def __init__(
+        self,
+        environment_steps: int = 500,
+        save_path: str = ".",
+        save_name: str = "model_rollouts",
+    ):
+
+        self.save_path = save_path
+        self.save_name = save_name
+        self.environment_steps = environment_steps
+
+        self.rl_evaluator = RLEnvRollout(self.environment_steps)
+
+    def evaluate(
+        self,
+        experiment: ModelBasedRLTrainingExperiment,
+        epoch: int,
+    ):
+        if experiment.data is None:
+            raise ValueError("Cannot test on nonexistent data")
+        obs = self.rl_evaluator.visualize_rl_agent(
+            experiment.data.env, experiment.get_agent()
+        )
+        for i, o in enumerate(obs):
+            torchvision.io.write_video(
+                os.path.join(self.save_path, self.save_name, f"{epoch}_{i}.gif"),
+                o,
+                fps=16,
+            )
 
 
 class LatentModelReconstructionEvaluator(AbstractEvaluator):
@@ -58,6 +96,17 @@ class LatentModelReconstructionEvaluator(AbstractEvaluator):
                 torch.cat([inf_truth, pred_truth], dim=0),
                 os.path.join(self.save_path, f"{epoch}_{i}_env.png"),
             )
+
+
+class RLEnvRollout(AbstractRLVisualizer):
+    def __init__(self, steps: int):
+        self.steps = steps
+
+    def visualize_rl_agent(self, env: Env, agent: AbstractAgent):
+        observations, _, _, _, _ = run_agent_in_vec_environment(
+            env, agent, self.steps, explore=False
+        )
+        return torch.stack(observations, dim=0)
 
 
 class LatentSequenceModelRollout(AbstractModelVisualizer):
