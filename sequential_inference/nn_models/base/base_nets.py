@@ -75,6 +75,27 @@ def create_mlp(
     return nn.Sequential(*layers)
 
 
+class RecurrentMLP(nn.Module):
+    def __init__(self, input_dim, output_dim, recurrent_dim, embedding_units):
+        super().__init__()
+        self.embedding_units = embedding_units
+        self.recurrent_dim = recurrent_dim
+        self.embedding = create_mlp(input_dim, recurrent_dim, embedding_units)
+        self.rnn = nn.GRU(
+            recurrent_dim, recurrent_dim, batch_first=True, bidirectional=False
+        )
+        self.out = nn.Linear(recurrent_dim, output_dim)
+
+    def forward(self, x, hidden=None):
+        if hidden is None:
+            batches = x.size[:-1]
+            hidden = torch.zeros(*batches, self.recurrent_dim).to(x.device)
+        x = self.embedding(x)
+        x, hidden = self.rnn(x, hidden)
+        x = self.out(x)
+        return x, hidden
+
+
 class MLP(nn.Module):
     def __init__(self, input_dim, output_dim, hidden_units=(1,)):
         super().__init__()
@@ -213,21 +234,21 @@ class UNet(nn.Module):
         self.down_convs = nn.ModuleList()
         cur_in_channels = in_channels
         for i in range(num_blocks):
-            self.down_convs.append(double_conv(cur_in_channels, channel_base * 2 ** i))
-            cur_in_channels = channel_base * 2 ** i
+            self.down_convs.append(double_conv(cur_in_channels, channel_base * 2**i))
+            cur_in_channels = channel_base * 2**i
 
         self.tconvs = nn.ModuleList()
         for i in range(num_blocks - 1, 0, -1):
             self.tconvs.append(
                 nn.ConvTranspose2d(
-                    channel_base * 2 ** i, channel_base * 2 ** (i - 1), 2, stride=2
+                    channel_base * 2**i, channel_base * 2 ** (i - 1), 2, stride=2
                 )
             )
 
         self.up_convs = nn.ModuleList()
         for i in range(num_blocks - 2, -1, -1):
             self.up_convs.append(
-                double_conv(channel_base * 2 ** (i + 1), channel_base * 2 ** i)
+                double_conv(channel_base * 2 ** (i + 1), channel_base * 2**i)
             )
 
         self.final_conv = nn.Conv2d(channel_base, out_channels, 1)
