@@ -27,7 +27,7 @@ def double_conv(in_channels, out_channels):
     )
 
 
-def create_conv_layers(
+def create_conv_net(
     input_size, output_size, layer_sizes, max_pool=True, padding=True, kernel_size=3
 ):
     if padding:
@@ -127,7 +127,7 @@ class EncoderNet(nn.Module):
         self.latent_dim = output_size
         self.img_shape = img_shape[1:]
 
-        self.network = create_conv_layers(
+        self.network = create_conv_net(
             input_size + 3,
             output_size,
             layer_sizes,
@@ -191,7 +191,7 @@ class BroadcastDecoderNet(nn.Module):
         self.img_shape = img_shape
 
         # construct the core conv structure
-        self.network = create_conv_layers(
+        self.network = create_conv_net(
             self.latent_dim + 2,
             self.output_channels,
             layers,
@@ -234,21 +234,21 @@ class UNet(nn.Module):
         self.down_convs = nn.ModuleList()
         cur_in_channels = in_channels
         for i in range(num_blocks):
-            self.down_convs.append(double_conv(cur_in_channels, channel_base * 2**i))
-            cur_in_channels = channel_base * 2**i
+            self.down_convs.append(double_conv(cur_in_channels, channel_base * 2 ** i))
+            cur_in_channels = channel_base * 2 ** i
 
         self.tconvs = nn.ModuleList()
         for i in range(num_blocks - 1, 0, -1):
             self.tconvs.append(
                 nn.ConvTranspose2d(
-                    channel_base * 2**i, channel_base * 2 ** (i - 1), 2, stride=2
+                    channel_base * 2 ** i, channel_base * 2 ** (i - 1), 2, stride=2
                 )
             )
 
         self.up_convs = nn.ModuleList()
         for i in range(num_blocks - 2, -1, -1):
             self.up_convs.append(
-                double_conv(channel_base * 2 ** (i + 1), channel_base * 2**i)
+                double_conv(channel_base * 2 ** (i + 1), channel_base * 2 ** i)
             )
 
         self.final_conv = nn.Conv2d(channel_base, out_channels, 1)

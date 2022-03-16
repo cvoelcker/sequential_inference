@@ -171,7 +171,9 @@ class ModelTrainingExperiment(AbstractTrainingExperiment):
             raise NotInitializedException("Data not initialized")
         batch = self.data.get_batch(self.batch_size)
         unpacked_batch = self.unpack_batch(batch)
-        return self.model_train_step(*unpacked_batch)
+        loss, stats = self.model_algorithm.compute_loss(*unpacked_batch)
+        stats = self._model_step(loss, stats)
+        return stats
 
     def model_train_step(self, obs, act, rew, done) -> Dict[str, torch.Tensor]:
         loss, stats = self.model_algorithm.compute_loss(obs, act, rew, done)

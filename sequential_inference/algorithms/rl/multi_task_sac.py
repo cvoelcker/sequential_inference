@@ -40,6 +40,7 @@ class SACAlgorithm(AbstractRLAlgorithm):
         gamma: float,
         target_gamma: float,
         target_entropy: float,
+        n_tasks: int,
         update_alpha: bool = False,
         latent: bool = False,
         observation: bool = True,
@@ -60,6 +61,12 @@ class SACAlgorithm(AbstractRLAlgorithm):
         self.target_entropy = target_entropy
 
         self.target_gamma = target_gamma
+
+        self.n_tasks = n_tasks
+
+        assert (
+            self.n_tasks == self.actor.n_tasks and self.n_tasks == self.critic.n_tasks
+        ), "Actor and critic not compatible with n_tasks"
 
         self.latent = latent
         self.observation = observation
@@ -93,6 +100,8 @@ class SACAlgorithm(AbstractRLAlgorithm):
         assert actions is not None
         assert rewards is not None
         assert done is not None
+
+        assert rewards.shape[-1] == self.n_tasks
 
         next_obs = obs[:, -1]
         obs = obs[:, -2]
@@ -179,6 +188,11 @@ class SACAlgorithm(AbstractRLAlgorithm):
 
     def get_agent(self) -> AbstractAgent:
         return PolicyNetworkAgent(self.actor, self.latent, self.observation)
+
+    def act(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        action_dist = self.actor(obs, 0)
+        action, logprob = action_dist.rsample()
+        return action, logprob
 
     def get_step(self) -> Callable[[Tuple, Dict], Dict]:
         def _step(losses: Tuple, stats: Dict) -> Dict:

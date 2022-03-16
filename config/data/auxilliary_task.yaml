@@ -1,0 +1,13 @@
+# @package data
+
+name: auxilliary_task
+init_data_source: random
+
+buffer_num_trajectories: 2000
+buffer_trajectory_length: 500
+sample_length: 16
+force_random: false
+
+n_init: 5000
+n: 500
+num_tasks: 10

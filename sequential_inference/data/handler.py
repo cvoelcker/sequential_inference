@@ -7,6 +7,7 @@ import torch
 from sequential_inference.abc.common import Env
 from sequential_inference.abc.data import AbstractDataHandler
 from sequential_inference.abc.rl import AbstractAgent
+from sequential_inference.data.multi_task_target import AuxilliaryTaskReplayBuffer
 from sequential_inference.data.storage import BatchDataSampler, TrajectoryReplayBuffer
 from sequential_inference.data.offline import load_offline_data
 from sequential_inference.algorithms.rl.agents import RandomAgent
@@ -31,6 +32,16 @@ def setup_data(cfg: omegaconf.DictConfig, env: Env) -> AbstractDataHandler:
         handler.set_num_sampling_steps(
             cfg.data.n, cfg.data.n_init, force_random=cfg.data.force_random
         )
+    elif cfg.data.name == "auxilliary_task":
+        buffer = AuxilliaryTaskReplayBuffer(
+            cfg.data.buffer_num_trajectories,
+            cfg.data.buffer_trajectory_length,
+            env,
+            cfg.data.num_tasks,
+            sample_length=cfg.data.sample_length,
+            device=cfg.device,
+        )
+        handler = OnlineDataSamplingStrategy(env, buffer)
     else:
         raise ValueError(f"Unknown data strategy {cfg.data.name}")
     return handler

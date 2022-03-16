@@ -1,1 +1,13 @@
 # @package experiment
+
+defaults:
+  - _self_
+  - model_algorithm/independent_sequence_vi
+
+_target_: sequential_inference.experiments.base.ModelTrainingExperiment
+
+epochs: 1000
+epoch_steps: 1000
+batch_size: 128
+log_interval: 50
+checkpoint_interval: 5

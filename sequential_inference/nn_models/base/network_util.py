@@ -9,6 +9,10 @@ import torch.distributions as dists
 from torch.distributions.kl import kl_divergence
 
 
+def calc_output_shape(conv_layers, input_size):
+    return tuple(conv_layers(torch.rand(1, *input_size)).shape)
+
+
 def create_coord_buffer(patch_shape):
     ys = torch.linspace(-1, 1, patch_shape[0])
     xs = torch.linspace(-1, 1, patch_shape[1])

@@ -11,12 +11,11 @@ encoder:
   additional_channels: 1
   return_scale: True
 
+feature_dim: 128
+latent_dim: 128
 action_dim: ${env.action_dim}
 latent_hidden_units: [200, 200]
 recurrent_dim: 200
 reward_decoder_hidden_units: [200, 200]
-kl_factor: 1.
-state_factor: 1. 
-reward_factor: 1.
 lr: 6e-4
 recurrent: True

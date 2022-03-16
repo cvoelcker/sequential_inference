@@ -1,8 +1,10 @@
 from typing import Tuple
+
 import torch
 from torch import distributions as td
 from torch import nn
 from torch.nn import Linear, Conv2d, ConvTranspose2d, GRUCell
+import torch.nn.functional as F
 
 from sequential_inference.nn_models.base.network_util import Reshape
 
@@ -62,7 +64,7 @@ class ConvEncoder(nn.Module):
         if self.return_scale:
             mean, scale = torch.chunk(x, 2, -1)
             mean = mean.view(orig_shape[:2] + [self.latent_dim])
-            scale = scale.view(orig_shape[:2] + [self.latent_dim])
+            scale = F.softplus(scale.view(orig_shape[:2] + [self.latent_dim])) + 1e-5
             return mean, scale
         return x.view(orig_shape[:2] + [self.latent_dim])
 

@@ -1,10 +1,11 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 import torch
 
 from sequential_inference.abc.common import Env
 from sequential_inference.abc.data import AbstractDataBuffer
 
 from sequential_inference.abc.rl import AbstractAgent
+from sequential_inference.data.multi_task_target import AuxilliaryTaskReplayBuffer
 from sequential_inference.log.logger import DataCheckpointing
 from sequential_inference.util.rl_util import run_agent_in_vec_environment
 from sequential_inference.data.storage import TrajectoryReplayBuffer
@@ -18,7 +19,9 @@ def gather_data(
     explore: bool = True,
     checkpointer: Optional[DataCheckpointing] = None,
 ) -> Optional[Dict[str, torch.Tensor]]:
-    if isinstance(buffer, TrajectoryReplayBuffer):
+    if isinstance(buffer, TrajectoryReplayBuffer) or isinstance(
+        buffer, AuxilliaryTaskReplayBuffer
+    ):
         log = gather_trajectory_data(
             env, agent, buffer, steps, explore, checkpointing=checkpointer
         )

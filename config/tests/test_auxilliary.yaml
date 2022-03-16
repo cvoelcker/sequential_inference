@@ -1,13 +1,19 @@
+# @package _global_
+
 defaults:
   - env: visual_dm_control
-  - data: online
+  - data: auxilliary_task
   - experiment: rl_experiment
-  - _self_
 
 env:
   obs_dim: 0
   obs_action_dim: 0
   action_dim: 0
+
+experiment:
+  epochs: 10
+  epoch_steps: 1000
+  batch_size: 256
 
 logging:
   _target_: sequential_inference.util.setup.hydra_make_list
@@ -15,7 +21,7 @@ logging:
     _target_: sequential_inference.log.logger.TorchTensorboardHandler
     log_dir: "${chp_dir}/tb_logs"
     name_dir: "default"
-    keys: [step, epoch]
+    keys: [log, epoch]
   file_step:
     _target_: sequential_inference.log.logger.CsvLogger
     log_dir: "${chp_dir}/raw_logs"
@@ -29,11 +35,14 @@ logging:
   file_eval:
     _target_: sequential_inference.log.logger.CsvLogger
     log_dir: "${chp_dir}/raw_logs"
-    name: "eval"
-    keys: [eval]
-
-seed: 0
+    name: "log"
+    keys: [log]
 
 cluster: local
 chp_dir: .
 device: cpu
+seed: 0
+
+hydra:
+  searchpath:
+    - pkg://config

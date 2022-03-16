@@ -24,6 +24,8 @@ class IndependentVIModelAlgorithm(AbstractLatentSequenceAlgorithm):
         recurrent_dim: int,
         reward_decoder_hidden_units: List[int],
         action_dim: List[int],
+        feature_dim: int,
+        latent_dim: int,
         lr: float = 6e-4,
         recurrent=False,
     ):
@@ -33,18 +35,18 @@ class IndependentVIModelAlgorithm(AbstractLatentSequenceAlgorithm):
 
         if recurrent:
             self.latent = RecurrentMLP(  # type: ignore
-                self.encoder.feature_dim + action_dim[0],  # type: ignore
+                feature_dim + action_dim[0],  # type: ignore
                 recurrent_dim,
-                self.encoder.feature_dim,
+                feature_dim,
                 latent_hidden_units,
             )
         else:
             self.latent = create_mlp(  # type: ignore
-                self.encoder.feature_dim + action_dim[0], self.encoder.feature_dim, latent_hidden_units  # type: ignore
+                feature_dim + action_dim[0], feature_dim, latent_hidden_units  # type: ignore
             )
 
         reward_decoder = create_mlp(
-            self.encoder.feature_dim + action_dim[0], 1, reward_decoder_hidden_units  # type: ignore
+            feature_dim + action_dim[0], 1, reward_decoder_hidden_units  # type: ignore
         )
         self.reward_decoder = reward_decoder
         self.recurrent = recurrent
@@ -78,17 +80,42 @@ class IndependentVIModelAlgorithm(AbstractLatentSequenceAlgorithm):
 
     def _predict_features(self, features_seq, actions):
         h = actions.shape[1]
-        features_seq = features_seq.unsqueeze(2).repeat(1, 1, h, 1)
-        predictions = [features_seq]
+        features_seq = features_seq
+        predictions = [features_seq[:, :1]]
+        hidden = None
 
         for i in range(h):
-            next_step_cont = self.latent(predictions[-1], actions[:, i])
-            next_step = self.latent(features_seq[:, :, i], actions[:, i])
-            next_step = torch.cat(
-                [next_step_cont[:, :, :i], next_step[:, :, i:]], dim=1
-            )
+            prediction = predictions[-1]
+            num_prev = prediction.shape[1]
+            action_exp = actions[:, i : i + 1].repeat(1, num_prev, 1)
+            inp = torch.cat([prediction, action_exp], dim=-1)
+            if self.recurrent:
+                next_step_cont, hidden = self.latent(
+                    inp,
+                    hidden,
+                )
+            else:
+                next_step_cont = self.latent(inp)
+            next_step = self.latent(
+                torch.cat((features_seq[:, i], actions[:, i]), dim=-1)
+            ).unsqueeze(1)
+            next_step = torch.cat([next_step_cont, next_step], dim=1)
             predictions.append(next_step)
-        return torch.stack(predictions, 1)
+
+        predictions_stack = []
+        for prediction in predictions:
+            prediction = torch.cat(
+                (
+                    prediction,
+                    torch.zeros_like(prediction[:, :1]).repeat(
+                        1, h - prediction.shape[1]
+                    ),
+                ),
+                dim=1,
+            )
+            predictions_stack.append(prediction)
+
+        return torch.stack(predictions_stack, 1)
 
     def compute_loss(
         self,
@@ -107,23 +134,20 @@ class IndependentVIModelAlgorithm(AbstractLatentSequenceAlgorithm):
 
         # encoder_decoder loss
 
-        obs = obs.view(b * h, *obs_shape)
         features_mean, features_scale = self.encoder(
             join_state_with_array(obs, rewards)
         )
 
         posterior = torch.distributions.Normal(features_mean, features_scale)
-        prior = torch.distributions.Normal(torch.zeros_like(features_mean.loc), 1.0)
-        kl = kl_divergence(posterior, prior)
-        kl_loss = kl.sum(dim=1)
+        kl_loss = _isotropic_kl(features_mean, features_scale)
 
         recon = self.decoder(posterior.rsample())
-        recon_loss = torch.sum((recon - obs) ** 2, dim=[1, 2, 3])
+        recon_loss = torch.sum((recon - obs) ** 2, dim=[-1, -2, -3])
 
         loss = torch.mean(recon_loss + kl_loss)
 
         stats["vae_loss"] = loss.detach().cpu()
-        stats["kl"] = kl.detach().cpu()
+        stats["kl"] = kl_loss.detach().cpu()
         stats["recon"] = recon_loss.detach().cpu()
 
         # latent dynamics loss
@@ -171,3 +195,25 @@ class IndependentVIModelAlgorithm(AbstractLatentSequenceAlgorithm):
             + list(self.latent.parameters())
             + list(self.reward_decoder.parameters())
         )
+
+    def get_samples(self):
+        raise NotImplementedError("Independent VI")
+
+    def infer_single_step(self):
+        raise NotImplementedError("Independent VI")
+
+    def predict_latent_sequence(self):
+        raise NotImplementedError("Independent VI")
+
+    def predict_latent_step(self):
+        raise NotImplementedError("Independent VI")
+
+    def reconstruct(self):
+        raise NotImplementedError("Independent VI")
+
+    def rollout_with_policy(self):
+        raise NotImplementedError("Independent VI")
+
+
+def _isotropic_kl(mean, scale):
+    return 0.5 * torch.sum(1.0 + torch.log(scale) - mean ** 2 - scale, -1)

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Callable, List, Optional, Union
 from gym import Space
 
 import torch
@@ -55,7 +55,7 @@ class PolicyNetworkAgent(AbstractAgent):
 
     def __init__(
         self,
-        policy: torch.nn.Module,
+        policy: Callable[[Union[torch.Tensor, None]], torch.distributions.Distribution],
         latent: bool,
         observation: bool,
         max_latent_size: Optional[int] = None,
@@ -89,6 +89,7 @@ class PolicyNetworkAgent(AbstractAgent):
             inp = [latent, context]
         else:
             raise ValueError("Policy needs to depend on something ^^")
+        assert len(inp) > 0, "Input must be provided for policy"
         action_dist = self.policy(*inp)
         if explore:
             action = action_dist.rsample()[0]
@@ -159,8 +160,8 @@ class InferencePolicyAgent(AbstractAgent):
                     full=True,
                 )
                 self.last_reward = reward
-            self.prior = self.model.get_samples([prior], full=True)[:, 0]
-            self.state = self.model.get_samples([posterior], full=True)[:, 0]
+            self.prior = self.model.get_samples([prior], full=True)[:, 0]  # type: ignore
+            self.state = self.model.get_samples([posterior], full=True)[:, 0]  # type: ignore
         else:
             raise ValueError("Policy needs to depend on something ^^")
 
